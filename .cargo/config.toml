@@ -1,0 +1,6 @@
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
+
+[build]
+rustc-wrapper = "C:\\Users\\Shadow\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Mozilla.sccache_Microsoft.Winget.Source_8wekyb3d8bbwe\\sccache-v0.17.0-x86_64-pc-windows-msvc\\sccache.exe"
+jobs = 4
