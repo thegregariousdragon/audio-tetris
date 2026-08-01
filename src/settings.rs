@@ -23,6 +23,7 @@ impl Difficulty {
 pub struct Settings {
     pub sfx_volume: f32, // 0.0 to 1.0
     pub bgm_volume: f32, // 0.0 to 1.0
+    pub voice_volume: f32, // 0.0 to 1.0 — informational; actual voice volume controlled by screen reader
     pub difficulty: Difficulty,
     pub controller_enabled: bool,
 }
@@ -32,6 +33,7 @@ impl Default for Settings {
         Self {
             sfx_volume: 0.2,
             bgm_volume: 0.2,
+            voice_volume: 1.0,
             difficulty: Difficulty::Moderate,
             controller_enabled: false,
         }

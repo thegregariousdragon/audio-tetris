@@ -213,12 +213,14 @@ impl GameState {
         cleared_lines
     }
 
-    pub fn hold(&mut self) -> Option<(&'static str, &'static str)> {
+    /// Returns Some((is_swap, held_piece_name, new_piece_name)) on success, None if hold is locked out this turn.
+    pub fn hold(&mut self) -> Option<(bool, &'static str, &'static str)> {
         if self.has_held {
             return None;
         }
 
         let current_type = self.current_piece.t_type;
+        let is_swap = self.hold_piece.is_some();
         let new_piece = if let Some(held) = self.hold_piece {
             Tetromino::new(held)
         } else {
@@ -230,7 +232,7 @@ impl GameState {
         self.current_piece = new_piece;
         self.has_held = true;
 
-        Some((current_type.as_str(), new_str))
+        Some((is_swap, current_type.as_str(), new_str))
     }
 
     fn clear_lines(&mut self) -> u32 {
