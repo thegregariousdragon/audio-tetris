@@ -63,10 +63,17 @@ fn get_how_to_play_lines(controller_enabled: bool) -> Vec<String> {
         "Music Controls: Q or P (Prev), W or Left Bracket (Mute), E or Right Bracket (Next)".to_string(),
         "".to_string(),
         "Audio Cues:".to_string(),
-        "- High pitch = Top of board, Low pitch = Bottom".to_string(),
-        "- Chime = Perfect alignment with a gap".to_string(),
-        "- Thud = Piece locked".to_string(),
-        "- Explosion = Line cleared".to_string(),
+        "- Soft Drop: Low click that descends in pitch as the piece nears the bottom.".to_string(),
+        "- Horizontal Move: Stereo-panned tick. Left columns play in the left ear, right columns in the right ear.".to_string(),
+        "- Hard Drop: Heavy impact thud.".to_string(),
+        "- Clockwise Rotation: Ascending two-note blip (low to high).".to_string(),
+        "- Counter-Clockwise Rotation: Descending two-note blip (high to low).".to_string(),
+        "- Hold Piece: Soft pop sound. Swap produces a swoosh-clack.".to_string(),
+        "- Hold Denied: Low error buzz when you've already held this turn.".to_string(),
+        "- Line Clear: Chords and arpeggios that get richer with more lines cleared.".to_string(),
+        "- Tetris (4 lines): Triumphant fanfare run!".to_string(),
+        "- Danger Warning: Sonar ping that speeds up as the stack nears the top.".to_string(),
+        "- Chime = Perfect alignment with a gap.".to_string(),
         "".to_string(),
         "Press Enter or A to read all. Press Escape to go back.".to_string(),
     ]);
@@ -160,7 +167,7 @@ impl AppFrame {
         let (display_text, spoken_text) = match screen {
             AppScreen::MainMenu { selection } => {
                 let opt0 = if in_prog { "Resume Game" } else { "New Game" };
-                let options = [opt0, "How to Play", "Settings", "About", "Quit"];
+                let options: [&str; 5] = [opt0, "How to Play", "Settings", "About", "Quit"];
                 let mut text = String::from("Main Menu\n\n");
                 for (i, opt) in options.iter().enumerate() {
                     if i == selection {
@@ -174,6 +181,7 @@ impl AppFrame {
             AppScreen::Settings { selection } => {
                 let options = [
                     format!("Difficulty: {}", s.difficulty.as_str()),
+                    format!("Voice Cues Volume: {}% (controlled by your screen reader)", (s.voice_volume * 100.0) as i32),
                     format!("Sound Effects Volume: {}%", (s.sfx_volume * 100.0) as i32),
                     format!("Background Music Volume: {}%", (s.bgm_volume * 100.0) as i32),
                     format!("Gamepad Support: {}", if s.controller_enabled { "ON" } else { "OFF" }),
@@ -182,7 +190,7 @@ impl AppFrame {
                 let mut text = String::from("Settings\nUse Left and Right arrows to adjust values.\n\n");
                 for (i, opt) in options.iter().enumerate() {
                     if i == selection {
-                        text.push_str(&format!("-> {}\n", opt));
+                        text.push_str(&format!("->{} {}\n", " ", opt));
                     } else {
                         text.push_str(&format!("   {}\n", opt));
                     }
@@ -268,7 +276,7 @@ impl AppFrame {
                 if gs.is_game_over { return; }
                 
                 if gs.move_piece(0, 1) {
-                    audio_engine.play_move_sound(gs.current_piece.x, gs.current_piece.y);
+                    audio_engine.play_soft_drop_sound(gs.current_piece.y);
                 } else {
                     let lines = gs.lock_piece();
                     if lines > 0 {
@@ -287,6 +295,9 @@ impl AppFrame {
                         audio_engine.play_spawn_sound(gs.current_piece.t_type);
                     }
                 }
+                // Check danger state based on max column height
+                let max_h = gs.get_topography().iter().copied().max().unwrap_or(0);
+                audio_engine.update_danger_state(max_h);
             }
         });
 
@@ -311,10 +322,10 @@ impl AppFrame {
                     let (display_text, spoken_text) = match current_screen {
                         AppScreen::MainMenu { selection } => {
                             let opt0 = if in_prog { "Resume Game" } else { "New Game" };
-                            let options = [opt0, "How to Play", "Settings", "About", "Quit"];
+                            let options: [&str; 5] = [opt0, "How to Play", "Settings", "About", "Quit"];
                             let mut text = String::from("Main Menu\n\n");
                             for (i, opt) in options.iter().enumerate() {
-                                if i == selection { text.push_str(&format!("-> {}\n", opt)); } 
+                                if i == selection { text.push_str(&format!("->{} {}\n", " ", opt)); } 
                                 else { text.push_str(&format!("   {}\n", opt)); }
                             }
                             (text, options[selection].to_string())
@@ -322,6 +333,7 @@ impl AppFrame {
                         AppScreen::Settings { selection } => {
                             let options = [
                                 format!("Difficulty: {}", s.difficulty.as_str()),
+                                format!("Voice Cues Volume: {}% (controlled by your screen reader)", (s.voice_volume * 100.0) as i32),
                                 format!("Sound Effects Volume: {}%", (s.sfx_volume * 100.0) as i32),
                                 format!("Background Music Volume: {}%", (s.bgm_volume * 100.0) as i32),
                                 format!("Gamepad Support: {}", if s.controller_enabled { "ON" } else { "OFF" }),
@@ -329,7 +341,7 @@ impl AppFrame {
                             ];
                             let mut text = String::from("Settings\nUse Left and Right arrows to adjust values.\n\n");
                             for (i, opt) in options.iter().enumerate() {
-                                if i == selection { text.push_str(&format!("-> {}\n", opt)); } 
+                                if i == selection { text.push_str(&format!("->{} {}\n", " ", opt)); } 
                                 else { text.push_str(&format!("   {}\n", opt)); }
                             }
                             (text, options[selection].clone())
@@ -478,13 +490,13 @@ impl AppFrame {
                     AppScreen::Settings { selection } => {
                         match action {
                             InputAction::Up => {
-                                let new_sel = if selection > 0 { selection - 1 } else { 4 };
+                                let new_sel = if selection > 0 { selection - 1 } else { 5 };
                                 *screen_state.lock().unwrap() = AppScreen::Settings { selection: new_sel };
                                 audio_engine.play_menu_move();
                                 screen_changed = true;
                             }
                             InputAction::Down => {
-                                let new_sel = if selection < 4 { selection + 1 } else { 0 };
+                                let new_sel = if selection < 5 { selection + 1 } else { 0 };
                                 *screen_state.lock().unwrap() = AppScreen::Settings { selection: new_sel };
                                 audio_engine.play_menu_move();
                                 screen_changed = true;
@@ -498,13 +510,16 @@ impl AppFrame {
                                         Difficulty::Easy => Difficulty::Easy,
                                     };
                                 } else if selection == 1 {
+                                    s.voice_volume = (s.voice_volume - 0.05).max(0.0);
+                                    tolk.speak(format!("Voice Cues Volume {}%", (s.voice_volume * 100.0) as i32), true);
+                                } else if selection == 2 {
                                     s.sfx_volume = (s.sfx_volume - 0.05).max(0.0);
                                     audio_engine.set_sfx_volume(s.sfx_volume);
                                     audio_engine.play_aligned_sound();
-                                } else if selection == 2 {
+                                } else if selection == 3 {
                                     s.bgm_volume = (s.bgm_volume - 0.05).max(0.0);
                                     audio_engine.set_bgm_volume(s.bgm_volume);
-                                } else if selection == 3 {
+                                } else if selection == 4 {
                                     s.controller_enabled = !s.controller_enabled;
                                     let status = if s.controller_enabled { "Enabled" } else { "Disabled" };
                                     tolk.speak(format!("Gamepad Support {}", status), true);
@@ -521,13 +536,16 @@ impl AppFrame {
                                         Difficulty::Difficult => Difficulty::Difficult,
                                     };
                                 } else if selection == 1 {
+                                    s.voice_volume = (s.voice_volume + 0.05).min(1.0);
+                                    tolk.speak(format!("Voice Cues Volume {}%", (s.voice_volume * 100.0) as i32), true);
+                                } else if selection == 2 {
                                     s.sfx_volume = (s.sfx_volume + 0.05).min(1.0);
                                     audio_engine.set_sfx_volume(s.sfx_volume);
                                     audio_engine.play_aligned_sound();
-                                } else if selection == 2 {
+                                } else if selection == 3 {
                                     s.bgm_volume = (s.bgm_volume + 0.05).min(1.0);
                                     audio_engine.set_bgm_volume(s.bgm_volume);
-                                } else if selection == 3 {
+                                } else if selection == 4 {
                                     s.controller_enabled = !s.controller_enabled;
                                     let status = if s.controller_enabled { "Enabled" } else { "Disabled" };
                                     tolk.speak(format!("Gamepad Support {}", status), true);
@@ -536,14 +554,14 @@ impl AppFrame {
                                 screen_changed = true;
                             }
                             InputAction::Select | InputAction::Back => {
-                                if selection == 3 && action == InputAction::Select {
+                                if selection == 4 && action == InputAction::Select {
                                     let mut s = settings.lock().unwrap();
                                     s.controller_enabled = !s.controller_enabled;
                                     s.save();
                                     let status = if s.controller_enabled { "Enabled" } else { "Disabled" };
                                     tolk.speak(format!("Gamepad Support {}", status), true);
                                     screen_changed = true;
-                                } else if selection == 4 || action == InputAction::Back {
+                                } else if selection == 5 || action == InputAction::Back {
                                     audio_engine.play_menu_select();
                                     *screen_state.lock().unwrap() = AppScreen::MainMenu { selection: 2 };
                                     screen_changed = true;
@@ -621,39 +639,43 @@ impl AppFrame {
                             }
                             InputAction::Left => {
                                 if gs.move_piece(-1, 0) {
-                                    audio_engine.play_move_sound(gs.current_piece.x, gs.current_piece.y);
+                                    audio_engine.play_horizontal_move_sound(gs.current_piece.x);
                                     if gs.is_perfect_fit() { audio_engine.play_aligned_sound(); }
-                                    tolk.speak(format!("Left, col {}", gs.current_piece.x), true);
+                                    tolk.speak(format!("Left, column {}", gs.current_piece.x), true);
                                 }
                             }
                             InputAction::Right => {
                                 if gs.move_piece(1, 0) {
-                                    audio_engine.play_move_sound(gs.current_piece.x, gs.current_piece.y);
+                                    audio_engine.play_horizontal_move_sound(gs.current_piece.x);
                                     if gs.is_perfect_fit() { audio_engine.play_aligned_sound(); }
-                                    tolk.speak(format!("Right, col {}", gs.current_piece.x), true);
+                                    tolk.speak(format!("Right, column {}", gs.current_piece.x), true);
                                 }
                             }
                             InputAction::RotateRight => {
                                 if gs.rotate_piece() {
-                                    audio_engine.play_rotate_sound(gs.current_piece.y);
+                                    audio_engine.play_rotate_cw_sound(gs.current_piece.y);
                                     if gs.is_perfect_fit() { audio_engine.play_aligned_sound(); }
                                     tolk.speak("Rotated Right", true);
                                 }
                             }
                             InputAction::RotateLeft => {
                                 if gs.rotate_piece_ccw() {
-                                    audio_engine.play_rotate_sound(gs.current_piece.y);
+                                    audio_engine.play_rotate_ccw_sound(gs.current_piece.y);
                                     if gs.is_perfect_fit() { audio_engine.play_aligned_sound(); }
                                     tolk.speak("Rotated Left", true);
                                 }
                             }
                             InputAction::Hold => {
-                                if let Some((held, new_p)) = gs.hold() {
-                                    audio_engine.play_menu_select();
+                                if let Some((is_swap, held, new_p)) = gs.hold() {
+                                    if is_swap {
+                                        audio_engine.play_hold_swap_sound();
+                                    } else {
+                                        audio_engine.play_hold_sound();
+                                    }
                                     tolk.speak(format!("Held {}. New piece: {}", held, new_p), true);
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                 } else {
-                                    audio_engine.play_lock_sound();
+                                    audio_engine.play_hold_denied_sound();
                                     tolk.speak("Already held this turn", true);
                                 }
                             }
@@ -662,20 +684,21 @@ impl AppFrame {
                             }
                             InputAction::Down => {
                                 if gs.move_piece(0, 1) {
-                                    audio_engine.play_move_sound(gs.current_piece.x, gs.current_piece.y);
+                                    audio_engine.play_soft_drop_sound(gs.current_piece.y);
                                     if gs.is_perfect_fit() { audio_engine.play_aligned_sound(); }
                                     tolk.speak(format!("Down, row {}", gs.current_piece.y), true);
                                 }
                             }
                             InputAction::HardDrop => {
                                 while gs.move_piece(0, 1) {}
+                                audio_engine.play_hard_drop_sound();
                                 let lines = gs.lock_piece();
                                 if lines > 0 {
                                     audio_engine.play_clear_sound(lines);
                                     tolk.output(format!("Hard drop. Cleared {} lines! Level: {}. Score: {}", lines, gs.level, gs.score), true);
                                     timer.borrow().start(gs.current_speed_ms(), false);
                                 } else {
-                                    audio_engine.play_lock_sound();
+                                    // Hard drop sound already played above
                                 }
                                 if gs.is_game_over {
                                     timer.borrow().stop();
