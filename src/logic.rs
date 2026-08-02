@@ -1,3 +1,4 @@
+use rand::seq::SliceRandom;
 use rand::Rng;
 use crate::settings::Difficulty;
 
@@ -9,16 +10,46 @@ pub enum TetrominoType {
     I, J, L, O, S, T, Z,
 }
 
-impl TetrominoType {
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ItemType {
+    Magnet,
+    Nuke,
+    Laser,
+}
+
+impl ItemType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            TetrominoType::I => "I-Piece",
-            TetrominoType::J => "J-Piece",
-            TetrominoType::L => "L-Piece",
-            TetrominoType::O => "O-Piece",
-            TetrominoType::S => "S-Piece",
-            TetrominoType::T => "T-Piece",
-            TetrominoType::Z => "Z-Piece",
+            ItemType::Magnet => "The Magnet",
+            ItemType::Nuke => "The Nuke",
+            ItemType::Laser => "The Laser",
+        }
+    }
+}
+
+impl TetrominoType {
+    #[allow(dead_code)]
+    pub fn as_str(&self, piece_callouts_technical: bool) -> &'static str {
+        if piece_callouts_technical {
+            match self {
+                TetrominoType::I => "Bar",
+                TetrominoType::J => "Left Angle",
+                TetrominoType::L => "Right Angle",
+                TetrominoType::O => "Square",
+                TetrominoType::S => "Right Step",
+                TetrominoType::T => "T",
+                TetrominoType::Z => "Left Step",
+            }
+        } else {
+            match self {
+                TetrominoType::I => "Long bar",
+                TetrominoType::J => "Left L-shape",
+                TetrominoType::L => "Right L-shape",
+                TetrominoType::O => "Square",
+                TetrominoType::S => "Right zig-zag",
+                TetrominoType::T => "T-shape",
+                TetrominoType::Z => "Left zig-zag",
+            }
         }
     }
 }
@@ -29,15 +60,17 @@ pub struct Tetromino {
     pub x: i32,
     pub y: i32,
     pub rotation: usize,
+    pub item: Option<ItemType>,
 }
 
 impl Tetromino {
     pub fn new(t_type: TetrominoType) -> Self {
         Self {
             t_type,
-            x: 3, // Spawn in middle
+            x: 3,
             y: 0,
             rotation: 0,
+            item: None, // Initialized later
         }
     }
 
@@ -60,8 +93,54 @@ impl Tetromino {
     }
 }
 
+pub struct LockResult {
+    pub cleared_lines: u32,
+    pub is_t_spin: bool,
+    pub b2b_bonus: bool,
+    pub combo: u32,
+    pub zone_lines_cleared_this_turn: u32,
+    pub zone_meter_full: bool,
+}
+
+impl Tetromino {
+    pub fn get_kicks(&self, start_rot: usize, end_rot: usize) -> [(i32, i32); 5] {
+        if self.t_type == TetrominoType::O {
+            return [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)];
+        }
+        
+        let state = (start_rot, end_rot);
+        
+        if self.t_type == TetrominoType::I {
+            match state {
+                (0, 1) => [( 0, 0), (-2, 0), ( 1, 0), (-2, 1), ( 1,-2)],
+                (1, 0) => [( 0, 0), ( 2, 0), (-1, 0), ( 2,-1), (-1, 2)],
+                (1, 2) => [( 0, 0), (-1, 0), ( 2, 0), (-1,-2), ( 2, 1)],
+                (2, 1) => [( 0, 0), ( 1, 0), (-2, 0), ( 1, 2), (-2,-1)],
+                (2, 3) => [( 0, 0), ( 2, 0), (-1, 0), ( 2,-1), (-1, 2)],
+                (3, 2) => [( 0, 0), (-2, 0), ( 1, 0), (-2, 1), ( 1,-2)],
+                (3, 0) => [( 0, 0), ( 1, 0), (-2, 0), ( 1, 2), (-2,-1)],
+                (0, 3) => [( 0, 0), (-1, 0), ( 2, 0), (-1,-2), ( 2, 1)],
+                _ => [(0, 0); 5],
+            }
+        } else {
+            match state {
+                (0, 1) => [( 0, 0), (-1, 0), (-1,-1), ( 0, 2), (-1, 2)],
+                (1, 0) => [( 0, 0), ( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)],
+                (1, 2) => [( 0, 0), ( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)],
+                (2, 1) => [( 0, 0), (-1, 0), (-1,-1), ( 0, 2), (-1, 2)],
+                (2, 3) => [( 0, 0), ( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)],
+                (3, 2) => [( 0, 0), (-1, 0), (-1, 1), ( 0,-2), (-1,-2)],
+                (3, 0) => [( 0, 0), (-1, 0), (-1, 1), ( 0,-2), (-1,-2)],
+                (0, 3) => [( 0, 0), ( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)],
+                _ => [(0, 0); 5],
+            }
+        }
+    }
+}
+
 pub struct GameState {
     pub board: [[Option<TetrominoType>; BOARD_WIDTH]; BOARD_HEIGHT],
+    pub item_board: [[Option<ItemType>; BOARD_WIDTH]; BOARD_HEIGHT],
     pub current_piece: Tetromino,
     pub score: u32,
     pub level: u32,
@@ -70,13 +149,29 @@ pub struct GameState {
     pub difficulty: Difficulty,
     pub hold_piece: Option<TetrominoType>,
     pub has_held: bool,
+    pub bag: Vec<TetrominoType>,
+    pub b2b: u32,
+    pub combo: u32,
+    pub last_move_was_spin: bool,
+    pub lock_delay_active: bool,
+    pub lock_delay_timer_ms: i32,
+    pub fall_timer_ms: i32,
+    pub moves_since_lock_delay: u32,
+    pub is_in_zone: bool,
+    pub zone_meter: u32, // 0 to 100
+    pub zone_lines_cleared: u32,
+    pub zone_timer_ms: i32,
+    pub inventory: Option<ItemType>,
+    pub item_spawned: Option<ItemType>,
+    pub item_acquired: Option<ItemType>,
 }
 
 impl GameState {
     pub fn new(difficulty: Difficulty) -> Self {
-        Self {
+        let mut gs = Self {
             board: [[None; BOARD_WIDTH]; BOARD_HEIGHT],
-            current_piece: Self::random_piece(),
+            item_board: [[None; BOARD_WIDTH]; BOARD_HEIGHT],
+            current_piece: Tetromino::new(TetrominoType::I), // Temporary
             score: 0,
             level: 1,
             total_lines: 0,
@@ -84,7 +179,25 @@ impl GameState {
             difficulty,
             hold_piece: None,
             has_held: false,
-        }
+            bag: Vec::new(),
+            b2b: 0,
+            combo: 0,
+            last_move_was_spin: false,
+            lock_delay_active: false,
+            lock_delay_timer_ms: 0,
+            fall_timer_ms: 0,
+            moves_since_lock_delay: 0,
+            is_in_zone: false,
+            zone_meter: 0,
+            zone_lines_cleared: 0,
+            zone_timer_ms: 0,
+            inventory: None,
+            item_spawned: None,
+            item_acquired: None,
+        };
+        gs.fill_bag();
+        gs.current_piece = gs.next_piece();
+        gs
     }
 
     pub fn current_speed_ms(&self) -> i32 {
@@ -100,14 +213,33 @@ impl GameState {
         speed
     }
 
-    pub fn random_piece() -> Tetromino {
-        let mut rng = rand::thread_rng();
-        let types = [
+    pub fn fill_bag(&mut self) {
+        let mut types = vec![
             TetrominoType::I, TetrominoType::J, TetrominoType::L,
             TetrominoType::O, TetrominoType::S, TetrominoType::T, TetrominoType::Z,
         ];
-        let idx = rng.gen_range(0..types.len());
-        Tetromino::new(types[idx])
+        let mut rng = rand::thread_rng();
+        types.shuffle(&mut rng);
+        self.bag.extend(types);
+    }
+
+    pub fn next_piece(&mut self) -> Tetromino {
+        if self.bag.is_empty() {
+            self.fill_bag();
+        }
+        let t_type = self.bag.remove(0);
+        let mut piece = Tetromino::new(t_type);
+        
+        let mut rng = rand::thread_rng();
+        if rng.gen_range(0..100) < 15 {
+            let items = [ItemType::Magnet, ItemType::Nuke, ItemType::Laser];
+            piece.item = Some(*items.choose(&mut rng).unwrap());
+            self.item_spawned = piece.item;
+        } else {
+            self.item_spawned = None;
+        }
+        
+        piece
     }
 
     pub fn is_valid_position(&self, piece: &Tetromino) -> bool {
@@ -124,6 +256,21 @@ impl GameState {
         true
     }
 
+    pub fn can_move_down(&self) -> bool {
+        let mut next = self.current_piece.clone();
+        next.y += 1;
+        self.is_valid_position(&next)
+    }
+
+    #[allow(dead_code)]
+    pub fn get_ghost_y(&self) -> i32 {
+        let mut ghost = self.current_piece.clone();
+        while self.is_valid_position(&Tetromino { y: ghost.y + 1, ..ghost.clone() }) {
+            ghost.y += 1;
+        }
+        ghost.y
+    }
+
     pub fn move_piece(&mut self, dx: i32, dy: i32) -> bool {
         let mut new_piece = self.current_piece.clone();
         new_piece.x += dx;
@@ -131,6 +278,9 @@ impl GameState {
 
         if self.is_valid_position(&new_piece) {
             self.current_piece = new_piece;
+            if dx != 0 || dy > 0 {
+                self.last_move_was_spin = false;
+            }
             true
         } else {
             false
@@ -138,27 +288,43 @@ impl GameState {
     }
 
     pub fn rotate_piece(&mut self) -> bool {
-        let mut new_piece = self.current_piece.clone();
-        new_piece.rotation = (new_piece.rotation + 1) % 4;
+        let start_rot = self.current_piece.rotation;
+        let end_rot = (start_rot + 1) % 4;
+        let kicks = self.current_piece.get_kicks(start_rot, end_rot);
 
-        if self.is_valid_position(&new_piece) {
-            self.current_piece = new_piece;
-            true
-        } else {
-            false
+        for &(dx, dy) in &kicks {
+            let mut new_piece = self.current_piece.clone();
+            new_piece.rotation = end_rot;
+            new_piece.x += dx;
+            new_piece.y += dy;
+
+            if self.is_valid_position(&new_piece) {
+                self.current_piece = new_piece;
+                self.last_move_was_spin = true;
+                return true;
+            }
         }
+        false
     }
 
     pub fn rotate_piece_ccw(&mut self) -> bool {
-        let mut new_piece = self.current_piece.clone();
-        new_piece.rotation = (new_piece.rotation + 3) % 4;
+        let start_rot = self.current_piece.rotation;
+        let end_rot = (start_rot + 3) % 4;
+        let kicks = self.current_piece.get_kicks(start_rot, end_rot);
 
-        if self.is_valid_position(&new_piece) {
-            self.current_piece = new_piece;
-            true
-        } else {
-            false
+        for &(dx, dy) in &kicks {
+            let mut new_piece = self.current_piece.clone();
+            new_piece.rotation = end_rot;
+            new_piece.x += dx;
+            new_piece.y += dy;
+
+            if self.is_valid_position(&new_piece) {
+                self.current_piece = new_piece;
+                self.last_move_was_spin = true;
+                return true;
+            }
         }
+        false
     }
 
     pub fn is_perfect_fit(&self) -> bool {
@@ -185,36 +351,146 @@ impl GameState {
         true
     }
 
-    pub fn lock_piece(&mut self) -> u32 {
+    pub fn is_t_spin(&self) -> bool {
+        if self.current_piece.t_type != TetrominoType::T {
+            return false;
+        }
+        if !self.last_move_was_spin {
+            return false;
+        }
+        
+        let mut corners = 0;
+        let x = self.current_piece.x;
+        let y = self.current_piece.y;
+        
+        let corner_coords = [(x, y), (x+2, y), (x, y+2), (x+2, y+2)];
+        for &(cx, cy) in &corner_coords {
+            if cx < 0 || cx >= BOARD_WIDTH as i32 || cy >= BOARD_HEIGHT as i32 {
+                corners += 1;
+            } else if cy >= 0 && self.board[cy as usize][cx as usize].is_some() {
+                corners += 1;
+            }
+        }
+        corners >= 3
+    }
+
+    pub fn lock_piece(&mut self) -> LockResult {
+        let is_t_spin = self.is_t_spin();
+
         for &(x, y) in &self.current_piece.get_blocks() {
             if y >= 0 && y < BOARD_HEIGHT as i32 && x >= 0 && x < BOARD_WIDTH as i32 {
                 self.board[y as usize][x as usize] = Some(self.current_piece.t_type);
             }
         }
+        
+        if let Some(item) = self.current_piece.item {
+            if let Some(&(x, y)) = self.current_piece.get_blocks().first() {
+                if y >= 0 && y < BOARD_HEIGHT as i32 && x >= 0 && x < BOARD_WIDTH as i32 {
+                    self.item_board[y as usize][x as usize] = Some(item);
+                }
+            }
+        }
 
         let cleared_lines = self.clear_lines();
-        self.total_lines += cleared_lines;
-        self.level = 1 + (self.total_lines / 10);
+        let mut b2b_bonus = false;
+        let mut zone_lines_cleared_this_turn = 0;
+        let mut zone_meter_full = false;
+        let mut reported_clears = 0;
+        
+        if cleared_lines > 0 {
+            if self.is_in_zone {
+                self.zone_lines_cleared += cleared_lines;
+                zone_lines_cleared_this_turn = cleared_lines;
+            } else {
+                reported_clears = cleared_lines;
+                self.combo += 1;
+                let is_hard_clear = cleared_lines == 4 || is_t_spin;
+                
+                if is_hard_clear && self.b2b > 0 {
+                    b2b_bonus = true;
+                }
+                
+                if is_hard_clear {
+                    self.b2b += 1;
+                } else {
+                    self.b2b = 0;
+                }
 
-        self.score += match cleared_lines {
-            1 => 100 * self.level,
-            2 => 300 * self.level,
-            3 => 500 * self.level,
-            4 => 800 * self.level,
-            _ => 0,
-        };
+                self.total_lines += cleared_lines;
+                self.level = 1 + (self.total_lines / 10);
+                
+                let base = match cleared_lines {
+                    1 => if is_t_spin { 800 } else { 100 },
+                    2 => if is_t_spin { 1200 } else { 300 },
+                    3 => if is_t_spin { 1600 } else { 500 },
+                    4 => 800,
+                    _ => 0,
+                };
+                
+                let b2b_mult = if b2b_bonus { 3 } else { 2 };
+                self.score += (base * b2b_mult / 2 + (50 * (self.combo - 1))) * self.level;
+                
+                let charge = match cleared_lines {
+                    1 => 10,
+                    2 => 20,
+                    3 => 30,
+                    4 => 50,
+                    _ => 0,
+                };
+                let charge = if is_t_spin { charge + 20 } else { charge };
+                let old_meter = self.zone_meter;
+                self.zone_meter = (self.zone_meter + charge).min(100);
+                if self.zone_meter == 100 && old_meter < 100 {
+                    zone_meter_full = true;
+                }
+            }
+        } else {
+            self.combo = 0;
+        }
 
-        self.current_piece = Self::random_piece();
+        self.current_piece = self.next_piece();
         if !self.is_valid_position(&self.current_piece) {
             self.is_game_over = true;
         }
         self.has_held = false;
+        self.lock_delay_active = false;
         
-        cleared_lines
+        LockResult {
+            cleared_lines: reported_clears,
+            is_t_spin,
+            b2b_bonus,
+            combo: self.combo,
+            zone_lines_cleared_this_turn,
+            zone_meter_full,
+        }
+    }
+
+    pub fn start_zone(&mut self) -> bool {
+        if self.is_in_zone || self.zone_meter < 100 {
+            return false;
+        }
+        self.is_in_zone = true;
+        self.zone_timer_ms = 10000; // 10 seconds for Zone mode
+        true
+    }
+
+    pub fn end_zone(&mut self) -> u32 {
+        if !self.is_in_zone { return 0; }
+        self.is_in_zone = false;
+        let lines = self.zone_lines_cleared;
+        self.zone_lines_cleared = 0;
+        self.zone_meter = 0;
+        
+        if lines > 0 {
+            // Massive bonus for zone clears
+            let multiplier = if lines >= 8 { 3 } else if lines >= 4 { 2 } else { 1 };
+            self.score += 100 * lines * lines * multiplier * self.level;
+        }
+        lines
     }
 
     /// Returns Some((is_swap, held_piece_name, new_piece_name)) on success, None if hold is locked out this turn.
-    pub fn hold(&mut self) -> Option<(bool, &'static str, &'static str)> {
+    pub fn hold(&mut self) -> Option<(bool, TetrominoType, TetrominoType)> {
         if self.has_held {
             return None;
         }
@@ -224,35 +500,96 @@ impl GameState {
         let new_piece = if let Some(held) = self.hold_piece {
             Tetromino::new(held)
         } else {
-            Self::random_piece()
+            self.next_piece()
         };
 
-        let new_str = new_piece.t_type.as_str();
+        let new_type = new_piece.t_type;
         self.hold_piece = Some(current_type);
         self.current_piece = new_piece;
         self.has_held = true;
 
-        Some((is_swap, current_type.as_str(), new_str))
+        Some((is_swap, current_type, new_type))
     }
 
     fn clear_lines(&mut self) -> u32 {
         let mut cleared = 0;
         let mut y = (BOARD_HEIGHT - 1) as i32;
+        self.item_acquired = None;
 
         while y >= 0 {
             let row_full = self.board[y as usize].iter().all(|cell| cell.is_some());
             
             if row_full {
                 cleared += 1;
+                
+                for x in 0..BOARD_WIDTH {
+                    if let Some(item) = self.item_board[y as usize][x] {
+                        self.inventory = Some(item);
+                        self.item_acquired = Some(item);
+                    }
+                }
+                
                 for move_y in (0..y).rev() {
                     self.board[(move_y + 1) as usize] = self.board[move_y as usize];
+                    self.item_board[(move_y + 1) as usize] = self.item_board[move_y as usize];
                 }
                 self.board[0] = [None; BOARD_WIDTH];
+                self.item_board[0] = [None; BOARD_WIDTH];
             } else {
                 y -= 1;
             }
         }
         cleared
+    }
+    
+    pub fn use_item(&mut self) -> Option<ItemType> {
+        let item = self.inventory.take()?;
+        
+        match item {
+            ItemType::Magnet => {
+                for x in 0..BOARD_WIDTH {
+                    let mut write_y = BOARD_HEIGHT as i32 - 1;
+                    for read_y in (0..BOARD_HEIGHT as i32).rev() {
+                        if self.board[read_y as usize][x].is_some() {
+                            self.board[write_y as usize][x] = self.board[read_y as usize][x];
+                            self.item_board[write_y as usize][x] = self.item_board[read_y as usize][x];
+                            if write_y != read_y {
+                                self.board[read_y as usize][x] = None;
+                                self.item_board[read_y as usize][x] = None;
+                            }
+                            write_y -= 1;
+                        }
+                    }
+                }
+            }
+            ItemType::Nuke => {
+                for y in (0..BOARD_HEIGHT - 4).rev() {
+                    self.board[y + 4] = self.board[y];
+                    self.item_board[y + 4] = self.item_board[y];
+                }
+                for y in 0..4 {
+                    self.board[y] = [None; BOARD_WIDTH];
+                    self.item_board[y] = [None; BOARD_WIDTH];
+                }
+            }
+            ItemType::Laser => {
+                let topo = self.get_topography();
+                let mut max_h = 0;
+                let mut max_col = 0;
+                for x in 0..BOARD_WIDTH {
+                    if topo[x] > max_h {
+                        max_h = topo[x];
+                        max_col = x;
+                    }
+                }
+                for y in 0..BOARD_HEIGHT {
+                    self.board[y][max_col] = None;
+                    self.item_board[y][max_col] = None;
+                }
+            }
+        }
+        
+        Some(item)
     }
 
     pub fn get_topography(&self) -> Vec<u32> {

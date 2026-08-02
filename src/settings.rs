@@ -20,12 +20,19 @@ impl Difficulty {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default)]
 pub struct Settings {
     pub sfx_volume: f32, // 0.0 to 1.0
     pub bgm_volume: f32, // 0.0 to 1.0
     pub voice_volume: f32, // 0.0 to 1.0 — informational; actual voice volume controlled by screen reader
     pub difficulty: Difficulty,
-    pub controller_enabled: bool,
+
+    pub piece_callouts_technical: bool,
+    pub scoring_details_advanced: bool,
+    pub zone_alerts: bool,
+    
+    pub bgm_enabled: bool,
+    pub saved_bgm_volume: f32, // The volume to restore when toggled back on
 }
 
 impl Default for Settings {
@@ -35,7 +42,13 @@ impl Default for Settings {
             bgm_volume: 0.2,
             voice_volume: 1.0,
             difficulty: Difficulty::Moderate,
-            controller_enabled: false,
+
+            piece_callouts_technical: false,
+            scoring_details_advanced: true,
+            zone_alerts: true,
+            
+            bgm_enabled: true,
+            saved_bgm_volume: 0.2,
         }
     }
 }

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use lofty::probe::Probe;
 use lofty::prelude::*;
 
-use crate::logic::TetrominoType;
+use crate::logic::{TetrominoType, ItemType};
 use crate::settings::Settings;
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ pub struct AudioEngine {
     bgm_sink: Arc<Mutex<Sink>>,
     bgm_tracks: Arc<Vec<(PathBuf, String)>>,
     current_track: Arc<Mutex<usize>>,
-    is_muted: Arc<Mutex<bool>>,
+    bgm_enabled: Arc<Mutex<bool>>,
     sfx_volume: Arc<Mutex<f32>>,
     bgm_volume_setting: Arc<Mutex<f32>>,
     /// Tracks the last time a danger ping was played (as epoch millis).
@@ -88,7 +88,7 @@ impl AudioEngine {
         tracks.sort_by(|a, b| a.0.cmp(&b.0));
         let bgm_tracks = Arc::new(tracks);
         let current_track = Arc::new(Mutex::new(0));
-        let is_muted = Arc::new(Mutex::new(false));
+        let bgm_enabled = Arc::new(Mutex::new(settings.bgm_enabled));
         let sfx_volume = Arc::new(Mutex::new(settings.sfx_volume));
         let bgm_volume_setting = Arc::new(Mutex::new(settings.bgm_volume));
 
@@ -98,7 +98,7 @@ impl AudioEngine {
             bgm_sink,
             bgm_tracks,
             current_track,
-            is_muted,
+            bgm_enabled,
             sfx_volume,
             bgm_volume_setting,
             last_danger_ping_ms: Arc::new(Mutex::new(0)),
@@ -115,9 +115,9 @@ impl AudioEngine {
 
     pub fn set_bgm_volume(&self, vol: f32) {
         *self.bgm_volume_setting.lock().unwrap() = vol;
-        let muted = *self.is_muted.lock().unwrap();
+        let enabled = *self.bgm_enabled.lock().unwrap();
         let s = self.bgm_sink.lock().unwrap();
-        if muted {
+        if !enabled {
             s.set_volume(0.0);
         } else {
             s.set_volume(vol);
@@ -128,7 +128,7 @@ impl AudioEngine {
         let sink = self.bgm_sink.clone();
         let bgm_tracks = self.bgm_tracks.clone();
         let track_idx = self.current_track.clone();
-        let muted = self.is_muted.clone();
+        let enabled = self.bgm_enabled.clone();
         let bgm_vol = self.bgm_volume_setting.clone();
 
         thread::spawn(move || {
@@ -142,7 +142,7 @@ impl AudioEngine {
                         if let Ok(decoder) = Decoder::new(reader) {
                             let s = sink.lock().unwrap();
                             s.append(decoder);
-                            if *muted.lock().unwrap() {
+                            if !*enabled.lock().unwrap() {
                                 s.set_volume(0.0);
                             } else {
                                 s.set_volume(*bgm_vol.lock().unwrap());
@@ -183,16 +183,15 @@ impl AudioEngine {
         track.1.clone()
     }
 
-    pub fn toggle_mute(&self) -> bool {
-        let mut muted = self.is_muted.lock().unwrap();
-        *muted = !*muted;
+    pub fn set_bgm_enabled(&self, enabled: bool) {
+        let mut e = self.bgm_enabled.lock().unwrap();
+        *e = enabled;
         let s = self.bgm_sink.lock().unwrap();
-        if *muted {
+        if !enabled {
             s.set_volume(0.0);
         } else {
             s.set_volume(*self.bgm_volume_setting.lock().unwrap());
         }
-        *muted
     }
 
     // -----------------------------------------------------------------------
@@ -543,11 +542,66 @@ impl AudioEngine {
     // MENU SOUNDS (unchanged)
     // =======================================================================
 
+    pub fn play_lock_delay_warning(&self) {
+        // A subtle, higher-pitched ticking sound
+        self.play_panned_sine(600.0, 30, 0.0, 0.3);
+    }
+
+    pub fn play_t_spin_sound(&self) {
+        self.play_panned_sine(800.0, 150, -0.5, 0.6);
+        self.play_panned_sine(1200.0, 200, 0.5, 0.6);
+    }
+
+    pub fn play_b2b_sound(&self) {
+        self.play_panned_sine(1000.0, 100, 0.0, 0.7);
+        self.play_panned_sine(1500.0, 200, 0.0, 0.7);
+    }
+
     pub fn play_menu_move(&self) {
         self.play_sine(300.0, 30, 0.3);
     }
 
     pub fn play_menu_select(&self) {
         self.play_sine(600.0, 50, 0.5);
+    }
+
+    pub fn play_zone_enter(&self) {
+        self.play_panned_sine(440.0, 1000, 0.0, 0.3);
+        self.play_panned_sine(554.37, 1000, -0.5, 0.3);
+        self.play_panned_sine(659.25, 1000, 0.5, 0.3);
+    }
+
+    pub fn play_item_spawn(&self) {
+        self.play_sine(800.0, 100, 0.4);
+    }
+
+    pub fn play_item_acquire(&self) {
+        self.play_sine(1200.0, 150, 0.5);
+        self.play_sine(1600.0, 200, 0.5);
+    }
+
+    pub fn play_item_use(&self, item: ItemType) {
+        match item {
+            ItemType::Magnet => {
+                self.play_panned_sine(200.0, 500, 0.0, 0.6);
+            }
+            ItemType::Nuke => {
+                self.play_panned_sine(100.0, 800, 0.0, 0.8); // Deep rumble
+            }
+            ItemType::Laser => {
+                self.play_panned_sine(2000.0, 300, 0.0, 0.6); // High pitched zap
+            }
+        }
+    }
+    
+    pub fn toggle_mute(&self) -> bool {
+        let mut is_muted = self.bgm_enabled.lock().unwrap();
+        *is_muted = !*is_muted;
+        if *is_muted {
+            self.bgm_sink.lock().unwrap().play();
+        } else {
+            self.bgm_sink.lock().unwrap().pause();
+        }
+        *is_muted
     }
 }
