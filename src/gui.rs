@@ -58,7 +58,7 @@ fn get_about_lines() -> Vec<String> {
         "Copyright © 2026 Gregory Lopez and Google Antigravity".to_string(),
         "Released under the MIT License.".to_string(),
         "".to_string(),
-        "This project aims to provide a fully accessible, natively compiled Tetris experience for visually impaired gamers, featuring high-performance audio, zero-latency inputs, and complete MSAA screen reader integration.".to_string(),
+        "This project aims to provide a fully accessible, natively compiled Tetris experience for visually impaired gamers, featuring high-performance audio, zero-latency inputs, and direct screen reader speech integration via Tolk.".to_string(),
         "".to_string(),
         "Open Source Components & Licenses:".to_string(),
         "- Rust Language: Developed by the Rust Foundation (MIT / Apache 2.0 License).".to_string(),
@@ -76,7 +76,7 @@ pub struct AppFrame {
     panel: Panel,
     text_display: StaticText,
     game_state: Arc<Mutex<GameState>>,
-    audio_engine: Arc<AudioEngine>,
+    audio_engine: Rc<AudioEngine>,
     timer: Rc<RefCell<wxdragon::timer::Timer<Frame>>>,
     tolk: Arc<Tolk>,
     settings: Arc<Mutex<Settings>>,
@@ -116,7 +116,7 @@ impl AppFrame {
 
         let diff = settings_data.difficulty;
         let game_state = Arc::new(Mutex::new(GameState::new(diff)));
-        let audio_engine = Arc::new(AudioEngine::new(&settings_data).unwrap());
+        let audio_engine = Rc::new(AudioEngine::new(&settings_data).unwrap());
         let timer = Rc::new(RefCell::new(wxdragon::timer::Timer::new(&frame)));
 
         Self {
@@ -263,8 +263,6 @@ impl AppFrame {
                         let tolk = tolk_instance.clone();
             let settings = settings.clone();
             let screen_state = screen_state.clone();
-            let text_display = text_display;
-            let frame = frame;
             let game_in_progress = game_in_progress.clone();
             
             Rc::new(RefCell::new(move |action: InputAction| {
@@ -928,7 +926,7 @@ impl AppFrame {
 
                 // Normal fall logic
                 gs.fall_timer_ms += interval;
-                if gs.fall_timer_ms >= gs.current_speed_ms() as i32 {
+                if gs.fall_timer_ms >= gs.current_speed_ms() {
                     gs.fall_timer_ms = 0;
                     
                     if !gs.is_in_zone {
@@ -1027,7 +1025,7 @@ impl AppFrame {
                 // --- NORMAL KEY PROCESSING ---
                 let action = match keycode {
                     315 => if current_screen_val == AppScreen::InGame { Some(InputAction::HardDrop) } else { Some(InputAction::Up) }, // UP Arrow
-                    317 => if current_screen_val == AppScreen::InGame { Some(InputAction::Down) } else { Some(InputAction::Down) }, // DOWN Arrow
+                    317 => Some(InputAction::Down), // DOWN Arrow
                     314 => Some(InputAction::Left), // LEFT Arrow
                     316 => Some(InputAction::Right), // RIGHT Arrow
                     87 | 119 => if current_screen_val == AppScreen::InGame { Some(InputAction::HardDrop) } else { Some(InputAction::Up) }, // W
