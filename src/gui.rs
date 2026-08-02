@@ -280,7 +280,7 @@ impl AppFrame {
                                 if i == selection { text.push_str(&format!("->{} {}\n", " ", opt)); } 
                                 else { text.push_str(&format!("   {}\n", opt)); }
                             }
-                            (text, options[selection].to_string())
+                            (text, format!("{} {} of {}", options[selection], selection + 1, options.len()))
                         }
                         AppScreen::Settings { selection } => {
                             let options = [
@@ -297,7 +297,7 @@ impl AppFrame {
                                 if i == selection { text.push_str(&format!("->{} {}\n", " ", opt)); } 
                                 else { text.push_str(&format!("   {}\n", opt)); }
                             }
-                            (text, options[selection].clone())
+                            (text, format!("{} {} of {}", options[selection], selection + 1, options.len()))
                         }
                         AppScreen::SpeechVerbosity { selection } => {
                             let options = [
@@ -311,7 +311,8 @@ impl AppFrame {
                                 if i == selection { text.push_str(&format!("->{} {}\n", " ", opt)); } 
                                 else { text.push_str(&format!("   {}\n", opt)); }
                             }
-                            (text, if initial_load { format!("Speech Verbosity Menu. {}", options[selection].clone()) } else { options[selection].clone() })
+                            let spoken = format!("{} {} of {}", options[selection], selection + 1, options.len());
+                            (text, if initial_load { format!("Speech Verbosity Menu. {}", spoken) } else { spoken })
                         }
                         AppScreen::HowToPlay { scroll_line } => {
                             let lines = get_how_to_play_lines();
@@ -321,9 +322,10 @@ impl AppFrame {
                                 else { text.push_str(&format!("   {}\n", line)); }
                             }
                             let line_text = if scroll_line < lines.len() { lines[scroll_line].clone() } else { "".to_string() };
+                            let spoken_line = if scroll_line < lines.len() { format!("{} {} of {}", line_text, scroll_line + 1, lines.len()) } else { "".to_string() };
                             let spoken = if initial_load {
-                                format!("How to play. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", line_text)
-                            } else { line_text };
+                                format!("How to play. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", spoken_line)
+                            } else { spoken_line };
                             (text, spoken)
                         }
                         AppScreen::About { scroll_line } => {
@@ -334,9 +336,10 @@ impl AppFrame {
                                 else { text.push_str(&format!("   {}\n", line)); }
                             }
                             let line_text = if scroll_line < lines.len() { lines[scroll_line].clone() } else { "".to_string() };
+                            let spoken_line = if scroll_line < lines.len() { format!("{} {} of {}", line_text, scroll_line + 1, lines.len()) } else { "".to_string() };
                             let spoken = if initial_load {
-                                format!("About Audio Tetris. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", line_text)
-                            } else { line_text };
+                                format!("About Audio Tetris. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", spoken_line)
+                            } else { spoken_line };
                             (text, spoken)
                         }
                         AppScreen::InGame => {
