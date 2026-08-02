@@ -322,10 +322,9 @@ impl AppFrame {
                                 else { text.push_str(&format!("   {}\n", line)); }
                             }
                             let line_text = if scroll_line < lines.len() { lines[scroll_line].clone() } else { "".to_string() };
-                            let spoken_line = if scroll_line < lines.len() { format!("{} {} of {}", line_text, scroll_line + 1, lines.len()) } else { "".to_string() };
                             let spoken = if initial_load {
-                                format!("How to play. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", spoken_line)
-                            } else { spoken_line };
+                                format!("How to play. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", line_text)
+                            } else { line_text };
                             (text, spoken)
                         }
                         AppScreen::About { scroll_line } => {
@@ -336,10 +335,9 @@ impl AppFrame {
                                 else { text.push_str(&format!("   {}\n", line)); }
                             }
                             let line_text = if scroll_line < lines.len() { lines[scroll_line].clone() } else { "".to_string() };
-                            let spoken_line = if scroll_line < lines.len() { format!("{} {} of {}", line_text, scroll_line + 1, lines.len()) } else { "".to_string() };
                             let spoken = if initial_load {
-                                format!("About Audio Tetris. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", spoken_line)
-                            } else { spoken_line };
+                                format!("About Audio Tetris. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", line_text)
+                            } else { line_text };
                             (text, spoken)
                         }
                         AppScreen::InGame => {
