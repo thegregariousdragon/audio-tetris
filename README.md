@@ -2,7 +2,7 @@
 
 A fully accessible, screen-reader-first arcade Tetris experience built entirely in Rust.
 
-Audio Tetris strips away graphical user interfaces in favor of a native, hyper-responsive audio environment. Leveraging Microsoft Active Accessibility (MSAA) and meticulously engineered keyboard clusters, the game is designed from the ground up for visually impaired players.
+Audio Tetris strips away graphical user interfaces in favor of a native, hyper-responsive audio environment. Leveraging the Tolk screen reader abstraction library for direct speech output and meticulously engineered keyboard clusters, the game is designed from the ground up for visually impaired players.
 
 ## Features
 
@@ -36,7 +36,7 @@ Audio Tetris is a native Windows desktop application and requires a specific too
 ### Special Build Flags and Configuration
 
 - **Fast Linking and Caching:** The `.cargo/config.toml` is pre-configured to use `rust-lld.exe` for significantly faster linking, and leverages `sccache.exe` to cache build artifacts and limit build threads to preserve CPU resources for screen readers.
-- **UI Automation (UIA) Alignment:** The `build.rs` script embeds a Windows manifest that enforces Common Controls version 6 and PerMonitorV2 DPI awareness. This is a critical requirement for accurate MSAA and UIA exposure to screen readers.
+- **Windows Manifest & DPI Awareness:** The `build.rs` script embeds a Windows manifest that enforces Common Controls version 6 and PerMonitorV2 DPI awareness. While this specific game bypasses native MSAA controls in favor of zero-latency raw inputs and direct Tolk speech, maintaining this manifest remains a strict baseline requirement across our `wxDragon` applications to ensure consistent OS-level DPI scaling and window rendering.
 
 ### Build Commands
 

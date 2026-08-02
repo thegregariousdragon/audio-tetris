@@ -247,10 +247,8 @@ impl GameState {
             if x < 0 || x >= BOARD_WIDTH as i32 || y < 0 || y >= BOARD_HEIGHT as i32 {
                 return false;
             }
-            if y >= 0 {
-                if self.board[y as usize][x as usize].is_some() {
-                    return false;
-                }
+            if y >= 0 && self.board[y as usize][x as usize].is_some() {
+                return false;
             }
         }
         true
@@ -365,9 +363,7 @@ impl GameState {
         
         let corner_coords = [(x, y), (x+2, y), (x, y+2), (x+2, y+2)];
         for &(cx, cy) in &corner_coords {
-            if cx < 0 || cx >= BOARD_WIDTH as i32 || cy >= BOARD_HEIGHT as i32 {
-                corners += 1;
-            } else if cy >= 0 && self.board[cy as usize][cx as usize].is_some() {
+            if cx < 0 || cx >= BOARD_WIDTH as i32 || cy >= BOARD_HEIGHT as i32 || (cy >= 0 && self.board[cy as usize][cx as usize].is_some()) {
                 corners += 1;
             }
         }
@@ -576,9 +572,9 @@ impl GameState {
                 let topo = self.get_topography();
                 let mut max_h = 0;
                 let mut max_col = 0;
-                for x in 0..BOARD_WIDTH {
-                    if topo[x] > max_h {
-                        max_h = topo[x];
+                for (x, &h) in topo.iter().enumerate().take(BOARD_WIDTH) {
+                    if h > max_h {
+                        max_h = h;
                         max_col = x;
                     }
                 }
@@ -594,10 +590,10 @@ impl GameState {
 
     pub fn get_topography(&self) -> Vec<u32> {
         let mut heights = vec![0; BOARD_WIDTH];
-        for x in 0..BOARD_WIDTH {
+        for (x, height) in heights.iter_mut().enumerate().take(BOARD_WIDTH) {
             for y in 0..BOARD_HEIGHT {
                 if self.board[y][x].is_some() {
-                    heights[x] = (BOARD_HEIGHT - y) as u32;
+                    *height = (BOARD_HEIGHT - y) as u32;
                     break;
                 }
             }
