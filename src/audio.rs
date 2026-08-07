@@ -67,20 +67,19 @@ impl AudioEngine {
         if let Ok(entries) = std::fs::read_dir("assets/music") {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() {
-                    if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                        let ext = ext.to_lowercase();
-                        if ext == "wav" || ext == "mp3" || ext == "ogg" || ext == "flac" {
-                            let mut title = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Unknown").to_string();
-                            if let Ok(tagged_file) = Probe::open(&path).and_then(|p| p.read()) {
-                                if let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag()) {
-                                    if let Some(t) = tag.title() {
-                                        title = t.into_owned();
-                                    }
-                                }
-                            }
-                            tracks.push((path, title));
+                if path.is_file()
+                    && let Some(ext) = path.extension().and_then(|s| s.to_str())
+                {
+                    let ext = ext.to_lowercase();
+                    if ext == "wav" || ext == "mp3" || ext == "ogg" || ext == "flac" {
+                        let mut title = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Unknown").to_string();
+                        if let Ok(tagged_file) = Probe::open(&path).and_then(|p| p.read())
+                            && let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag())
+                            && let Some(t) = tag.title()
+                        {
+                            title = t.into_owned();
                         }
+                        tracks.push((path, title));
                     }
                 }
             }

@@ -379,12 +379,11 @@ impl GameState {
             }
         }
         
-        if let Some(item) = self.current_piece.item {
-            if let Some(&(x, y)) = self.current_piece.get_blocks().first() {
-                if y >= 0 && y < BOARD_HEIGHT as i32 && x >= 0 && x < BOARD_WIDTH as i32 {
-                    self.item_board[y as usize][x as usize] = Some(item);
-                }
-            }
+        if let Some(item) = self.current_piece.item
+            && let Some(&(x, y)) = self.current_piece.get_blocks().first()
+            && y >= 0 && y < BOARD_HEIGHT as i32 && x >= 0 && x < BOARD_WIDTH as i32
+        {
+            self.item_board[y as usize][x as usize] = Some(item);
         }
 
         let cleared_lines = self.clear_lines();
