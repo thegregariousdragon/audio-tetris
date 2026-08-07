@@ -52,10 +52,12 @@ The user uses a screen reader. For accessibility and ease of reading:
 <RULE[rust_edition_standard]>
 # Rust Edition Standard
 
-- **Latest Edition Adoption**: The project must target the latest stable Rust edition. As of the current development cycle, this is the **Rust 2024 Edition**.
-- **Migration Protocol**: When upgrading editions, the developer must:
-    1. Update `Cargo.toml`.
-    2. Run `cargo check` to verify syntax and types.
-    3. Run `cargo test` to ensure behavioral consistency.
-    4. Verify the application's core functionality (e.g., audio-to-logic timing) via manual testing.
+- **Latest Edition & MSRV Adoption**: The project must target the latest stable Rust edition (currently **Rust 2024 Edition**) and specify `rust-version = "1.85"` in `Cargo.toml` as the Minimum Supported Rust Version (MSRV).
+- **Migration & Verification Protocol**: When maintaining or upgrading editions, developers and subagents must:
+    1. Declare `edition = "2024"` and `rust-version = "1.85"` in `Cargo.toml`.
+    2. Format code with `cargo fmt`.
+    3. Run `cargo check` to verify syntax and types.
+    4. Run `cargo test` to ensure behavioral consistency.
+    5. Run `cargo clippy --all-targets --all-features -- -D warnings` to enforce edition-specific linting standards.
+    6. Verify the application's core functionality (e.g., audio-to-logic timing) via manual testing.
 </RULE[rust_edition_standard]>

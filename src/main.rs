@@ -1,8 +1,8 @@
 #![windows_subsystem = "windows"]
 
-mod logic;
 mod audio;
 mod gui;
+mod logic;
 mod settings;
 
 use gui::AppFrame;
@@ -12,5 +12,6 @@ fn main() {
         let mut frame = AppFrame::new();
         frame.setup_events();
         frame.show();
-    }).unwrap();
+    })
+    .unwrap();
 }

@@ -1,13 +1,19 @@
-use rand::seq::SliceRandom;
-use rand::Rng;
 use crate::settings::Difficulty;
+use rand::Rng;
+use rand::seq::SliceRandom;
 
 pub const BOARD_WIDTH: usize = 10;
 pub const BOARD_HEIGHT: usize = 20;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum TetrominoType {
-    I, J, L, O, S, T, Z,
+    I,
+    J,
+    L,
+    O,
+    S,
+    T,
+    Z,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -76,15 +82,50 @@ impl Tetromino {
 
     pub fn get_blocks(&self) -> [(i32, i32); 4] {
         let blocks = match self.t_type {
-            TetrominoType::I => [[(0,1), (1,1), (2,1), (3,1)], [(2,0), (2,1), (2,2), (2,3)], [(0,2), (1,2), (2,2), (3,2)], [(1,0), (1,1), (1,2), (1,3)]],
-            TetrominoType::J => [[(0,0), (0,1), (1,1), (2,1)], [(1,0), (2,0), (1,1), (1,2)], [(0,1), (1,1), (2,1), (2,2)], [(1,0), (1,1), (0,2), (1,2)]],
-            TetrominoType::L => [[(2,0), (0,1), (1,1), (2,1)], [(1,0), (1,1), (1,2), (2,2)], [(0,1), (1,1), (2,1), (0,2)], [(0,0), (1,0), (1,1), (1,2)]],
-            TetrominoType::O => [[(1,0), (2,0), (1,1), (2,1)], [(1,0), (2,0), (1,1), (2,1)], [(1,0), (2,0), (1,1), (2,1)], [(1,0), (2,0), (1,1), (2,1)]],
-            TetrominoType::S => [[(1,0), (2,0), (0,1), (1,1)], [(1,0), (1,1), (2,1), (2,2)], [(1,1), (2,1), (0,2), (1,2)], [(0,0), (0,1), (1,1), (1,2)]],
-            TetrominoType::T => [[(1,0), (0,1), (1,1), (2,1)], [(1,0), (1,1), (2,1), (1,2)], [(0,1), (1,1), (2,1), (1,2)], [(1,0), (0,1), (1,1), (1,2)]],
-            TetrominoType::Z => [[(0,0), (1,0), (1,1), (2,1)], [(2,0), (1,1), (2,1), (1,2)], [(0,1), (1,1), (1,2), (2,2)], [(1,0), (0,1), (1,1), (0,2)]],
+            TetrominoType::I => [
+                [(0, 1), (1, 1), (2, 1), (3, 1)],
+                [(2, 0), (2, 1), (2, 2), (2, 3)],
+                [(0, 2), (1, 2), (2, 2), (3, 2)],
+                [(1, 0), (1, 1), (1, 2), (1, 3)],
+            ],
+            TetrominoType::J => [
+                [(0, 0), (0, 1), (1, 1), (2, 1)],
+                [(1, 0), (2, 0), (1, 1), (1, 2)],
+                [(0, 1), (1, 1), (2, 1), (2, 2)],
+                [(1, 0), (1, 1), (0, 2), (1, 2)],
+            ],
+            TetrominoType::L => [
+                [(2, 0), (0, 1), (1, 1), (2, 1)],
+                [(1, 0), (1, 1), (1, 2), (2, 2)],
+                [(0, 1), (1, 1), (2, 1), (0, 2)],
+                [(0, 0), (1, 0), (1, 1), (1, 2)],
+            ],
+            TetrominoType::O => [
+                [(1, 0), (2, 0), (1, 1), (2, 1)],
+                [(1, 0), (2, 0), (1, 1), (2, 1)],
+                [(1, 0), (2, 0), (1, 1), (2, 1)],
+                [(1, 0), (2, 0), (1, 1), (2, 1)],
+            ],
+            TetrominoType::S => [
+                [(1, 0), (2, 0), (0, 1), (1, 1)],
+                [(1, 0), (1, 1), (2, 1), (2, 2)],
+                [(1, 1), (2, 1), (0, 2), (1, 2)],
+                [(0, 0), (0, 1), (1, 1), (1, 2)],
+            ],
+            TetrominoType::T => [
+                [(1, 0), (0, 1), (1, 1), (2, 1)],
+                [(1, 0), (1, 1), (2, 1), (1, 2)],
+                [(0, 1), (1, 1), (2, 1), (1, 2)],
+                [(1, 0), (0, 1), (1, 1), (1, 2)],
+            ],
+            TetrominoType::Z => [
+                [(0, 0), (1, 0), (1, 1), (2, 1)],
+                [(2, 0), (1, 1), (2, 1), (1, 2)],
+                [(0, 1), (1, 1), (1, 2), (2, 2)],
+                [(1, 0), (0, 1), (1, 1), (0, 2)],
+            ],
         };
-        
+
         let mut final_blocks = [(0, 0); 4];
         for (i, &(bx, by)) in blocks[self.rotation % 4].iter().enumerate() {
             final_blocks[i] = (self.x + bx, self.y + by);
@@ -107,31 +148,31 @@ impl Tetromino {
         if self.t_type == TetrominoType::O {
             return [(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)];
         }
-        
+
         let state = (start_rot, end_rot);
-        
+
         if self.t_type == TetrominoType::I {
             match state {
-                (0, 1) => [( 0, 0), (-2, 0), ( 1, 0), (-2, 1), ( 1,-2)],
-                (1, 0) => [( 0, 0), ( 2, 0), (-1, 0), ( 2,-1), (-1, 2)],
-                (1, 2) => [( 0, 0), (-1, 0), ( 2, 0), (-1,-2), ( 2, 1)],
-                (2, 1) => [( 0, 0), ( 1, 0), (-2, 0), ( 1, 2), (-2,-1)],
-                (2, 3) => [( 0, 0), ( 2, 0), (-1, 0), ( 2,-1), (-1, 2)],
-                (3, 2) => [( 0, 0), (-2, 0), ( 1, 0), (-2, 1), ( 1,-2)],
-                (3, 0) => [( 0, 0), ( 1, 0), (-2, 0), ( 1, 2), (-2,-1)],
-                (0, 3) => [( 0, 0), (-1, 0), ( 2, 0), (-1,-2), ( 2, 1)],
+                (0, 1) => [(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)],
+                (1, 0) => [(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)],
+                (1, 2) => [(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)],
+                (2, 1) => [(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)],
+                (2, 3) => [(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)],
+                (3, 2) => [(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)],
+                (3, 0) => [(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)],
+                (0, 3) => [(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)],
                 _ => [(0, 0); 5],
             }
         } else {
             match state {
-                (0, 1) => [( 0, 0), (-1, 0), (-1,-1), ( 0, 2), (-1, 2)],
-                (1, 0) => [( 0, 0), ( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)],
-                (1, 2) => [( 0, 0), ( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)],
-                (2, 1) => [( 0, 0), (-1, 0), (-1,-1), ( 0, 2), (-1, 2)],
-                (2, 3) => [( 0, 0), ( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)],
-                (3, 2) => [( 0, 0), (-1, 0), (-1, 1), ( 0,-2), (-1,-2)],
-                (3, 0) => [( 0, 0), (-1, 0), (-1, 1), ( 0,-2), (-1,-2)],
-                (0, 3) => [( 0, 0), ( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)],
+                (0, 1) => [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
+                (1, 0) => [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)],
+                (1, 2) => [(0, 0), (1, 0), (1, 1), (0, -2), (1, -2)],
+                (2, 1) => [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
+                (2, 3) => [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
+                (3, 2) => [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)],
+                (3, 0) => [(0, 0), (-1, 0), (-1, 1), (0, -2), (-1, -2)],
+                (0, 3) => [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
                 _ => [(0, 0); 5],
             }
         }
@@ -215,8 +256,13 @@ impl GameState {
 
     pub fn fill_bag(&mut self) {
         let mut types = vec![
-            TetrominoType::I, TetrominoType::J, TetrominoType::L,
-            TetrominoType::O, TetrominoType::S, TetrominoType::T, TetrominoType::Z,
+            TetrominoType::I,
+            TetrominoType::J,
+            TetrominoType::L,
+            TetrominoType::O,
+            TetrominoType::S,
+            TetrominoType::T,
+            TetrominoType::Z,
         ];
         let mut rng = rand::thread_rng();
         types.shuffle(&mut rng);
@@ -229,7 +275,7 @@ impl GameState {
         }
         let t_type = self.bag.remove(0);
         let mut piece = Tetromino::new(t_type);
-        
+
         let mut rng = rand::thread_rng();
         if rng.gen_range(0..100) < 15 {
             let items = [ItemType::Magnet, ItemType::Nuke, ItemType::Laser];
@@ -238,7 +284,7 @@ impl GameState {
         } else {
             self.item_spawned = None;
         }
-        
+
         piece
     }
 
@@ -263,7 +309,10 @@ impl GameState {
     #[allow(dead_code)]
     pub fn get_ghost_y(&self) -> i32 {
         let mut ghost = self.current_piece.clone();
-        while self.is_valid_position(&Tetromino { y: ghost.y + 1, ..ghost.clone() }) {
+        while self.is_valid_position(&Tetromino {
+            y: ghost.y + 1,
+            ..ghost.clone()
+        }) {
             ghost.y += 1;
         }
         ghost.y
@@ -327,7 +376,7 @@ impl GameState {
 
     pub fn is_perfect_fit(&self) -> bool {
         let mut ghost = self.current_piece.clone();
-        
+
         while self.is_valid_position(&Tetromino {
             y: ghost.y + 1,
             ..ghost.clone()
@@ -356,14 +405,18 @@ impl GameState {
         if !self.last_move_was_spin {
             return false;
         }
-        
+
         let mut corners = 0;
         let x = self.current_piece.x;
         let y = self.current_piece.y;
-        
-        let corner_coords = [(x, y), (x+2, y), (x, y+2), (x+2, y+2)];
+
+        let corner_coords = [(x, y), (x + 2, y), (x, y + 2), (x + 2, y + 2)];
         for &(cx, cy) in &corner_coords {
-            if cx < 0 || cx >= BOARD_WIDTH as i32 || cy >= BOARD_HEIGHT as i32 || (cy >= 0 && self.board[cy as usize][cx as usize].is_some()) {
+            if cx < 0
+                || cx >= BOARD_WIDTH as i32
+                || cy >= BOARD_HEIGHT as i32
+                || (cy >= 0 && self.board[cy as usize][cx as usize].is_some())
+            {
                 corners += 1;
             }
         }
@@ -378,10 +431,13 @@ impl GameState {
                 self.board[y as usize][x as usize] = Some(self.current_piece.t_type);
             }
         }
-        
+
         if let Some(item) = self.current_piece.item
             && let Some(&(x, y)) = self.current_piece.get_blocks().first()
-            && y >= 0 && y < BOARD_HEIGHT as i32 && x >= 0 && x < BOARD_WIDTH as i32
+            && y >= 0
+            && y < BOARD_HEIGHT as i32
+            && x >= 0
+            && x < BOARD_WIDTH as i32
         {
             self.item_board[y as usize][x as usize] = Some(item);
         }
@@ -391,7 +447,7 @@ impl GameState {
         let mut zone_lines_cleared_this_turn = 0;
         let mut zone_meter_full = false;
         let mut reported_clears = 0;
-        
+
         if cleared_lines > 0 {
             if self.is_in_zone {
                 self.zone_lines_cleared += cleared_lines;
@@ -400,11 +456,11 @@ impl GameState {
                 reported_clears = cleared_lines;
                 self.combo += 1;
                 let is_hard_clear = cleared_lines == 4 || is_t_spin;
-                
+
                 if is_hard_clear && self.b2b > 0 {
                     b2b_bonus = true;
                 }
-                
+
                 if is_hard_clear {
                     self.b2b += 1;
                 } else {
@@ -413,18 +469,36 @@ impl GameState {
 
                 self.total_lines += cleared_lines;
                 self.level = 1 + (self.total_lines / 10);
-                
+
                 let base = match cleared_lines {
-                    1 => if is_t_spin { 800 } else { 100 },
-                    2 => if is_t_spin { 1200 } else { 300 },
-                    3 => if is_t_spin { 1600 } else { 500 },
+                    1 => {
+                        if is_t_spin {
+                            800
+                        } else {
+                            100
+                        }
+                    }
+                    2 => {
+                        if is_t_spin {
+                            1200
+                        } else {
+                            300
+                        }
+                    }
+                    3 => {
+                        if is_t_spin {
+                            1600
+                        } else {
+                            500
+                        }
+                    }
                     4 => 800,
                     _ => 0,
                 };
-                
+
                 let b2b_mult = if b2b_bonus { 3 } else { 2 };
                 self.score += (base * b2b_mult / 2 + (50 * (self.combo - 1))) * self.level;
-                
+
                 let charge = match cleared_lines {
                     1 => 10,
                     2 => 20,
@@ -449,7 +523,7 @@ impl GameState {
         }
         self.has_held = false;
         self.lock_delay_active = false;
-        
+
         LockResult {
             cleared_lines: reported_clears,
             is_t_spin,
@@ -470,15 +544,23 @@ impl GameState {
     }
 
     pub fn end_zone(&mut self) -> u32 {
-        if !self.is_in_zone { return 0; }
+        if !self.is_in_zone {
+            return 0;
+        }
         self.is_in_zone = false;
         let lines = self.zone_lines_cleared;
         self.zone_lines_cleared = 0;
         self.zone_meter = 0;
-        
+
         if lines > 0 {
             // Massive bonus for zone clears
-            let multiplier = if lines >= 8 { 3 } else if lines >= 4 { 2 } else { 1 };
+            let multiplier = if lines >= 8 {
+                3
+            } else if lines >= 4 {
+                2
+            } else {
+                1
+            };
             self.score += 100 * lines * lines * multiplier * self.level;
         }
         lines
@@ -513,17 +595,17 @@ impl GameState {
 
         while y >= 0 {
             let row_full = self.board[y as usize].iter().all(|cell| cell.is_some());
-            
+
             if row_full {
                 cleared += 1;
-                
+
                 for x in 0..BOARD_WIDTH {
                     if let Some(item) = self.item_board[y as usize][x] {
                         self.inventory = Some(item);
                         self.item_acquired = Some(item);
                     }
                 }
-                
+
                 for move_y in (0..y).rev() {
                     self.board[(move_y + 1) as usize] = self.board[move_y as usize];
                     self.item_board[(move_y + 1) as usize] = self.item_board[move_y as usize];
@@ -536,10 +618,10 @@ impl GameState {
         }
         cleared
     }
-    
+
     pub fn use_item(&mut self) -> Option<ItemType> {
         let item = self.inventory.take()?;
-        
+
         match item {
             ItemType::Magnet => {
                 for x in 0..BOARD_WIDTH {
@@ -547,7 +629,8 @@ impl GameState {
                     for read_y in (0..BOARD_HEIGHT as i32).rev() {
                         if self.board[read_y as usize][x].is_some() {
                             self.board[write_y as usize][x] = self.board[read_y as usize][x];
-                            self.item_board[write_y as usize][x] = self.item_board[read_y as usize][x];
+                            self.item_board[write_y as usize][x] =
+                                self.item_board[read_y as usize][x];
                             if write_y != read_y {
                                 self.board[read_y as usize][x] = None;
                                 self.item_board[read_y as usize][x] = None;
@@ -583,7 +666,7 @@ impl GameState {
                 }
             }
         }
-        
+
         Some(item)
     }
 
