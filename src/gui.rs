@@ -70,7 +70,7 @@ fn get_how_to_play_lines() -> Vec<String> {
 fn get_about_lines() -> Vec<String> {
     vec![
         "About Audio Tetris".to_string(),
-        "Version 0.1.0".to_string(),
+        format!("Version {}", env!("APP_VERSION")),
         "Copyright © 2026 Gregory Lopez and Google Antigravity".to_string(),
         "Released under the MIT License.".to_string(),
         "".to_string(),
