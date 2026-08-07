@@ -56,12 +56,11 @@ impl Default for Settings {
 impl Settings {
     pub fn load() -> Self {
         let path = Path::new("settings.json");
-        if path.exists() {
-            if let Ok(contents) = fs::read_to_string(path) {
-                if let Ok(settings) = serde_json::from_str(&contents) {
-                    return settings;
-                }
-            }
+        if path.exists()
+            && let Ok(contents) = fs::read_to_string(path)
+            && let Ok(settings) = serde_json::from_str(&contents)
+        {
+            return settings;
         }
         Settings::default()
     }
