@@ -1,15 +1,31 @@
 <RULE[project_branching_model]>
 # Branching Model and Protected Main Branch
 
-The `main` branch of this repository is protected and strictly requires pull request reviews. You CANNOT push directly to `main`.
+The `main` branch of this repository is protected and strictly requires pull request reviews and passing CI status checks (`Build, Test & Lint`). You CANNOT push directly to `main`.
 
 When you are asked to make changes to the codebase, you MUST follow this Git workflow:
 1. **Create a Branch**: Create and checkout a new branch with a descriptive name (e.g., `git checkout -b feature/dynamic-music`).
 2. **Commit Changes**: Make your changes and commit them to this branch.
 3. **Push Branch**: Push the branch to the remote repository (e.g., `git push -u origin feature/dynamic-music`).
-4. **Create Pull Request**: Use the GitHub CLI to create a Pull Request against the `main` branch (`gh pr create --title "..." --body "..."`).
-5. **Auto-Approve and Merge**: Once the Pull Request is created, use the GitHub CLI to approve it yourself (`gh pr review --approve`) and then merge it (`gh pr merge --squash --delete-branch`). This respects the branch protection while allowing you to complete the workflow automatically.
+4. **Create Pull Request**: Use the GitHub CLI to create a Pull Request against the `main` branch (`gh pr create --fill`).
+5. **Auto-Approve and Merge**: Once the Pull Request is created and CI checks pass, use the GitHub CLI to merge it (`gh pr merge --squash --delete-branch`). This respects branch protection while allowing you to complete the workflow automatically.
 </RULE[project_branching_model]>
+
+<RULE[github_ci_cd_and_releases]>
+# GitHub CI/CD & Automated Release Protocol
+
+- **Continuous Integration (CI)**: All Pull Requests targeting `main` must pass the `Build, Test & Lint` workflow (.github/workflows/ci.yml). Before creating a PR, developers and subagents MUST run the following pre-flight checks locally:
+    1. `cargo fmt --check`
+    2. `cargo check --all-targets --all-features`
+    3. `cargo test --all-targets --all-features`
+    4. `cargo clippy --all-targets --all-features -- -D warnings`
+- **Release Automation**: App releases are triggered automatically by pushing a signed Git tag starting with `v` (e.g. `v0.1.0` or `v1.0.0`). The release workflow (.github/workflows/release.yml) dynamically extracts the version, compiles the release binary, packages `audio-tetris-windows-x64.zip`, and creates a GitHub Release entry.
+- **Tag Release Command**: To issue a new release, use:
+    ```bash
+    git tag vX.Y.Z
+    git push origin vX.Y.Z
+    ```
+</RULE[github_ci_cd_and_releases]>
 
 <RULE[accessibility_chat_presentation]>
 # Screen Reader & Chat Accessibility Rule
