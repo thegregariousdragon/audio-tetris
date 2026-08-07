@@ -5,10 +5,10 @@ fn main() {
         .trim()
         .parse::<u32>()
         .unwrap_or(0);
-    
+
     let new_build = build_num + 1;
     std::fs::write(build_file, new_build.to_string()).unwrap();
-    
+
     println!("cargo:rustc-env=APP_VERSION=1.0.{}", new_build);
     if std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows" {
         let mut res = winres::WindowsResource::new();

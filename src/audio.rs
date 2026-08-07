@@ -1,15 +1,15 @@
-use rodio::{OutputStream, OutputStreamHandle, Sink, Source, Decoder};
+use lofty::prelude::*;
+use lofty::probe::Probe;
 use rodio::buffer::SamplesBuffer;
-use std::time::Duration;
-use std::thread;
-use std::sync::{Arc, Mutex};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
-use lofty::probe::Probe;
-use lofty::prelude::*;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
-use crate::logic::{TetrominoType, ItemType};
+use crate::logic::{ItemType, TetrominoType};
 use crate::settings::Settings;
 
 // ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ fn make_panned_sine(freq: f32, duration_ms: u64, pan: f32, amplitude: f32) -> Sa
     for i in 0..num_frames {
         let t = i as f32 / sample_rate as f32;
         let raw = (2.0 * std::f32::consts::PI * freq * t).sin() * amplitude;
-        samples.push(raw * left_gain);  // Left channel
+        samples.push(raw * left_gain); // Left channel
         samples.push(raw * right_gain); // Right channel
     }
 
@@ -62,7 +62,7 @@ impl AudioEngine {
     pub fn new(settings: &Settings) -> Result<Self, Box<dyn std::error::Error>> {
         let (_stream, stream_handle) = OutputStream::try_default()?;
         let bgm_sink = Arc::new(Mutex::new(Sink::try_new(&stream_handle)?));
-        
+
         let mut tracks = Vec::new();
         if let Ok(entries) = std::fs::read_dir("assets/music") {
             for entry in entries.flatten() {
@@ -72,9 +72,15 @@ impl AudioEngine {
                 {
                     let ext = ext.to_lowercase();
                     if ext == "wav" || ext == "mp3" || ext == "ogg" || ext == "flac" {
-                        let mut title = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Unknown").to_string();
+                        let mut title = path
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("Unknown")
+                            .to_string();
                         if let Ok(tagged_file) = Probe::open(&path).and_then(|p| p.read())
-                            && let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag())
+                            && let Some(tag) = tagged_file
+                                .primary_tag()
+                                .or_else(|| tagged_file.first_tag())
                             && let Some(t) = tag.title()
                         {
                             title = t.into_owned();
@@ -392,12 +398,21 @@ impl AudioEngine {
                     let sink_c = Sink::try_new(&handle).unwrap();
                     let sink_e = Sink::try_new(&handle).unwrap();
                     let sink_g = Sink::try_new(&handle).unwrap();
-                    sink_c.append(rodio::source::SineWave::new(523.25)
-                        .take_duration(Duration::from_millis(250)).amplify(vol));
-                    sink_e.append(rodio::source::SineWave::new(659.25)
-                        .take_duration(Duration::from_millis(250)).amplify(vol * 0.8));
-                    sink_g.append(rodio::source::SineWave::new(783.99)
-                        .take_duration(Duration::from_millis(250)).amplify(vol * 0.7));
+                    sink_c.append(
+                        rodio::source::SineWave::new(523.25)
+                            .take_duration(Duration::from_millis(250))
+                            .amplify(vol),
+                    );
+                    sink_e.append(
+                        rodio::source::SineWave::new(659.25)
+                            .take_duration(Duration::from_millis(250))
+                            .amplify(vol * 0.8),
+                    );
+                    sink_g.append(
+                        rodio::source::SineWave::new(783.99)
+                            .take_duration(Duration::from_millis(250))
+                            .amplify(vol * 0.7),
+                    );
                     sink_c.sleep_until_end();
                 }
                 2 => {
@@ -405,8 +420,11 @@ impl AudioEngine {
                     let notes = [523.25, 659.25, 783.99];
                     for freq in notes {
                         let sink = Sink::try_new(&handle).unwrap();
-                        sink.append(rodio::source::SineWave::new(freq)
-                            .take_duration(Duration::from_millis(60)).amplify(vol));
+                        sink.append(
+                            rodio::source::SineWave::new(freq)
+                                .take_duration(Duration::from_millis(60))
+                                .amplify(vol),
+                        );
                         sink.sleep_until_end();
                     }
                 }
@@ -415,8 +433,11 @@ impl AudioEngine {
                     let notes = [523.25, 659.25, 783.99, 1046.50];
                     for freq in notes {
                         let sink = Sink::try_new(&handle).unwrap();
-                        sink.append(rodio::source::SineWave::new(freq)
-                            .take_duration(Duration::from_millis(60)).amplify(vol * 1.2));
+                        sink.append(
+                            rodio::source::SineWave::new(freq)
+                                .take_duration(Duration::from_millis(60))
+                                .amplify(vol * 1.2),
+                        );
                         sink.sleep_until_end();
                     }
                 }
@@ -425,8 +446,11 @@ impl AudioEngine {
                     let notes = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
                     for freq in notes {
                         let sink = Sink::try_new(&handle).unwrap();
-                        sink.append(rodio::source::SineWave::new(freq)
-                            .take_duration(Duration::from_millis(40)).amplify(vol * 1.5));
+                        sink.append(
+                            rodio::source::SineWave::new(freq)
+                                .take_duration(Duration::from_millis(40))
+                                .amplify(vol * 1.5),
+                        );
                         sink.sleep_until_end();
                     }
                 }
@@ -592,7 +616,7 @@ impl AudioEngine {
             }
         }
     }
-    
+
     pub fn toggle_mute(&self) -> bool {
         let mut is_muted = self.bgm_enabled.lock().unwrap();
         *is_muted = !*is_muted;
