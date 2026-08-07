@@ -48,3 +48,14 @@ The user uses a screen reader. For accessibility and ease of reading:
 - **Panic-Free Production Code**: Avoid `.unwrap()` or `.expect()` inside runtime event handlers, audio callbacks, or FFI wrappers. Use explicit `Result` handling, pattern matching, or logged fallbacks to ensure application stability.
 - **Linting & Verification**: All code additions must compile cleanly under `cargo check` and adhere to `cargo clippy -- -D warnings`.
 </RULE[rust_code_quality_and_safety]>
+
+<RULE[rust_edition_standard]>
+# Rust Edition Standard
+
+- **Latest Edition Adoption**: The project must target the latest stable Rust edition. As of the current development cycle, this is the **Rust 2024 Edition**.
+- **Migration Protocol**: When upgrading editions, the developer must:
+    1. Update `Cargo.toml`.
+    2. Run `cargo check` to verify syntax and types.
+    3. Run `cargo test` to ensure behavioral consistency.
+    4. Verify the application's core functionality (e.g., audio-to-logic timing) via manual testing.
+</RULE[rust_edition_standard]>
