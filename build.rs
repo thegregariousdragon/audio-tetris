@@ -1,16 +1,28 @@
+use std::process::Command;
+
+fn get_version() -> String {
+    if let Ok(output) = Command::new("git")
+        .args(["describe", "--tags", "--always"])
+        .output()
+    {
+        if output.status.success() {
+            let git_ver = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !git_ver.is_empty() {
+                let clean_ver = git_ver.strip_prefix('v').unwrap_or(&git_ver);
+                return clean_ver.to_string();
+            }
+        }
+    }
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 fn main() {
-    let build_file = "build_number.txt";
-    let build_num = std::fs::read_to_string(build_file)
-        .unwrap_or_else(|_| "0".to_string())
-        .trim()
-        .parse::<u32>()
-        .unwrap_or(0);
+    let version = get_version();
+    println!("cargo:rustc-env=APP_VERSION={}", version);
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-changed=.git/refs/tags");
 
-    let new_build = build_num + 1;
-    std::fs::write(build_file, new_build.to_string()).unwrap();
-
-    println!("cargo:rustc-env=APP_VERSION=1.0.{}", new_build);
-    if std::env::var("CARGO_CFG_TARGET_OS").unwrap() == "windows" {
+    if std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "windows" {
         let mut res = winres::WindowsResource::new();
         res.set_manifest(r#"
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
@@ -34,6 +46,6 @@ fn main() {
   </asmv3:application>
 </assembly>
 "#);
-        res.compile().unwrap();
+        let _ = res.compile();
     }
 }
