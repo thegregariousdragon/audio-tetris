@@ -1293,18 +1293,14 @@ impl AppFrame {
                             44 => "Comma. Rotate left.",
                             88 | 120 => "X. Rotate right.",
                             46 => "Period. Rotate right.",
-                            69 | 101 | 76 | 108 | 79 | 111 | 78 | 110 => {
-                                "E, L, O, or N. Radar sweep."
-                            }
-                            81 | 113 | 75 | 107 | 80 | 112 | 77 | 109 => {
-                                "Q, K, P, or M. Activate Zone."
-                            }
+                            69 | 101 | 76 | 108 => "E or L. Radar sweep.",
+                            81 | 113 | 75 | 107 => "Q or K. Activate Zone.",
                             86 | 118 => "V. Inspect current piece shape and column span.",
-                            73 | 105 => "I. Inspect current piece shape and column span.",
                             59 | 186 => "Semicolon. Inspect current piece shape and column span.",
+                            73 | 105 => "I. Previous music track.",
+                            79 | 111 => "O. Mute or unmute music.",
+                            80 | 112 => "P. Next music track.",
                             306 | 340 | 344 | 160 | 161 => "Shift. Use Power-up Item.",
-                            45 => "Minus. Previous music track.",
-                            61 | 43 => "Plus or Equals. Next music track.",
                             72 | 104 => "H. Enter Keyboard Help Mode.",
                             _ => {
                                 tolk.output(format!("Unmapped key. Code: {}", keycode), true);
@@ -1345,13 +1341,14 @@ impl AppFrame {
                     67 | 99 | 47 => Some(InputAction::Hold), // C, /
                     90 | 122 | 44 => Some(InputAction::RotateLeft), // Z, ,
                     88 | 120 | 46 => Some(InputAction::RotateRight), // X, .
-                    86 | 118 | 73 | 105 | 59 | 186 => Some(InputAction::PieceInfo), // V, I, Semicolon
-                    69 | 101 | 76 | 108 | 79 | 111 | 78 | 110 => Some(InputAction::Radar), // E, L, O, N
-                    81 | 113 | 75 | 107 | 80 | 112 | 77 | 109 => Some(InputAction::Zone), // Q, K, P, M
+                    86 | 118 | 59 | 186 => Some(InputAction::PieceInfo), // V, Semicolon
+                    69 | 101 | 76 | 108 => Some(InputAction::Radar), // E, L
+                    81 | 113 | 75 | 107 => Some(InputAction::Zone), // Q, K
+                    73 | 105 => Some(InputAction::PrevTrack), // I
+                    79 | 111 => Some(InputAction::Mute), // O
+                    80 | 112 => Some(InputAction::NextTrack), // P
                     306 | 340 | 344 | 160 | 161 => Some(InputAction::UseItem), // Left/Right Shift
-                    45 => Some(InputAction::PrevTrack),                        // Minus
-                    61 | 43 => Some(InputAction::NextTrack),                   // Equals/Plus
-                    72 | 104 => Some(InputAction::HelpMode),                   // H
+                    72 | 104 => Some(InputAction::HelpMode), // H
                     _ => None,
                 };
 
