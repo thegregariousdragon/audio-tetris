@@ -132,6 +132,16 @@ impl Tetromino {
         }
         final_blocks
     }
+
+    pub fn column(&self) -> i32 {
+        let min_x = self
+            .get_blocks()
+            .iter()
+            .map(|&(bx, _)| bx)
+            .min()
+            .unwrap_or(self.x);
+        min_x + 1
+    }
 }
 
 pub struct LockResult {
@@ -828,5 +838,22 @@ mod tests {
         let topo = gs.get_topography();
         assert_eq!(topo[0], 5);
         assert_eq!(topo[1], 0);
+    }
+
+    #[test]
+    fn test_tetromino_column_calculation() {
+        let mut piece = Tetromino::new(TetrominoType::I);
+        piece.x = 0;
+        assert_eq!(piece.column(), 1);
+
+        piece.x = 6;
+        assert_eq!(piece.column(), 7);
+
+        let mut t_piece = Tetromino::new(TetrominoType::T);
+        t_piece.x = 0;
+        assert_eq!(t_piece.column(), 1);
+
+        t_piece.x = 7;
+        assert_eq!(t_piece.column(), 8);
     }
 }
