@@ -879,7 +879,7 @@ impl AppFrame {
                                         audio_engine.play_aligned_sound();
                                     }
                                     tolk.speak(
-                                        format!("Left, column {}", gs.current_piece.column()),
+                                        format!("Left, column {}", gs.current_piece.left_column()),
                                         true,
                                     );
                                 }
@@ -891,7 +891,10 @@ impl AppFrame {
                                         audio_engine.play_aligned_sound();
                                     }
                                     tolk.speak(
-                                        format!("Right, column {}", gs.current_piece.column()),
+                                        format!(
+                                            "Right, column {}",
+                                            gs.current_piece.right_column()
+                                        ),
                                         true,
                                     );
                                 }

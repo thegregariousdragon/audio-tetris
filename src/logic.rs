@@ -133,7 +133,7 @@ impl Tetromino {
         final_blocks
     }
 
-    pub fn column(&self) -> i32 {
+    pub fn left_column(&self) -> i32 {
         let min_x = self
             .get_blocks()
             .iter()
@@ -141,6 +141,16 @@ impl Tetromino {
             .min()
             .unwrap_or(self.x);
         min_x + 1
+    }
+
+    pub fn right_column(&self) -> i32 {
+        let max_x = self
+            .get_blocks()
+            .iter()
+            .map(|&(bx, _)| bx)
+            .max()
+            .unwrap_or(self.x);
+        max_x + 1
     }
 }
 
@@ -842,18 +852,22 @@ mod tests {
 
     #[test]
     fn test_tetromino_column_calculation() {
-        let mut piece = Tetromino::new(TetrominoType::I);
-        piece.x = 0;
-        assert_eq!(piece.column(), 1);
+        let mut i_piece = Tetromino::new(TetrominoType::I);
+        i_piece.x = 0;
+        assert_eq!(i_piece.left_column(), 1);
+        assert_eq!(i_piece.right_column(), 4);
 
-        piece.x = 6;
-        assert_eq!(piece.column(), 7);
+        i_piece.x = 6;
+        assert_eq!(i_piece.left_column(), 7);
+        assert_eq!(i_piece.right_column(), 10);
 
         let mut t_piece = Tetromino::new(TetrominoType::T);
         t_piece.x = 0;
-        assert_eq!(t_piece.column(), 1);
+        assert_eq!(t_piece.left_column(), 1);
+        assert_eq!(t_piece.right_column(), 3);
 
         t_piece.x = 7;
-        assert_eq!(t_piece.column(), 8);
+        assert_eq!(t_piece.left_column(), 8);
+        assert_eq!(t_piece.right_column(), 10);
     }
 }
