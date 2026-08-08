@@ -17,8 +17,8 @@ Audio Tetris strips away graphical user interfaces in favor of a native, hyper-r
 
 Audio Tetris features keyboard clusters so you can play your way!
 
-- **Left Cluster:** Move with W, A, S, D. Rotate with Z or X. Hold with C. Zone with Q. Item with Left Shift. Radar with E.
-- **Right Cluster:** Move with Arrow Keys. Rotate with Comma or Period. Hold with Slash. Zone with M. Item with Right Shift. Radar with N.
+- **Left Cluster:** Move with W, A, S, D. Rotate with Z or X. Hold with C. Inspect piece with V. Zone with Q. Radar with E. Item with Left Shift.
+- **Right Cluster (4x3 Grid):** Move with Arrow Keys. Rotate with Comma or Period. Hold with Slash. Inspect piece with Semicolon or I. Zone with K or P (or M). Radar with L or O (or N). Item with Right Shift.
 - **Global Actions:** Hard Drop with W, Up Arrow, or Spacebar. Music Controls with Minus and Equals.
 
 ## Building from Source

@@ -39,6 +39,7 @@ pub enum InputAction {
     Zone,
     UseItem,
     HelpMode,
+    PieceInfo,
 }
 
 fn get_how_to_play_lines() -> Vec<String> {
@@ -891,10 +892,7 @@ impl AppFrame {
                                         audio_engine.play_aligned_sound();
                                     }
                                     tolk.speak(
-                                        format!(
-                                            "Right, column {}",
-                                            gs.current_piece.right_column()
-                                        ),
+                                        format!("Right, column {}", gs.current_piece.left_column()),
                                         true,
                                     );
                                 }
@@ -905,7 +903,23 @@ impl AppFrame {
                                     if gs.is_perfect_fit() {
                                         audio_engine.play_aligned_sound();
                                     }
-                                    tolk.speak("Rotated Right", true);
+                                    let w = gs.current_piece.width();
+                                    let l = gs.current_piece.left_column();
+                                    let r = gs.current_piece.right_column();
+                                    let span_str = if w == 1 {
+                                        format!("Column {}", l)
+                                    } else {
+                                        format!("Columns {} through {}", l, r)
+                                    };
+                                    tolk.speak(
+                                        format!(
+                                            "Rotated Right, {} {} wide, {}",
+                                            w,
+                                            if w == 1 { "column" } else { "columns" },
+                                            span_str
+                                        ),
+                                        true,
+                                    );
                                 }
                             }
                             InputAction::RotateLeft => {
@@ -914,8 +928,50 @@ impl AppFrame {
                                     if gs.is_perfect_fit() {
                                         audio_engine.play_aligned_sound();
                                     }
-                                    tolk.speak("Rotated Left", true);
+                                    let w = gs.current_piece.width();
+                                    let l = gs.current_piece.left_column();
+                                    let r = gs.current_piece.right_column();
+                                    let span_str = if w == 1 {
+                                        format!("Column {}", l)
+                                    } else {
+                                        format!("Columns {} through {}", l, r)
+                                    };
+                                    tolk.speak(
+                                        format!(
+                                            "Rotated Left, {} {} wide, {}",
+                                            w,
+                                            if w == 1 { "column" } else { "columns" },
+                                            span_str
+                                        ),
+                                        true,
+                                    );
                                 }
+                            }
+                            InputAction::PieceInfo => {
+                                let p_name = gs
+                                    .current_piece
+                                    .t_type
+                                    .as_str(settings.lock().unwrap().piece_callouts_technical);
+                                let w = gs.current_piece.width();
+                                let l = gs.current_piece.left_column();
+                                let r = gs.current_piece.right_column();
+                                let y = gs.current_piece.y;
+                                let span_str = if w == 1 {
+                                    format!("Column {}", l)
+                                } else {
+                                    format!("Columns {} through {}", l, r)
+                                };
+                                tolk.speak(
+                                    format!(
+                                        "{}, {} {} wide, {}, row {}",
+                                        p_name,
+                                        w,
+                                        if w == 1 { "column" } else { "columns" },
+                                        span_str,
+                                        y
+                                    ),
+                                    true,
+                                );
                             }
                             InputAction::Hold => {
                                 if let Some((is_swap, held, new_p)) = gs.hold() {
@@ -1237,10 +1293,15 @@ impl AppFrame {
                             44 => "Comma. Rotate left.",
                             88 | 120 => "X. Rotate right.",
                             46 => "Period. Rotate right.",
-                            69 | 101 => "E. Radar sweep.",
-                            78 | 110 => "N. Radar sweep.",
-                            81 | 113 => "Q. Activate Zone.",
-                            77 | 109 => "M. Activate Zone.",
+                            69 | 101 | 76 | 108 | 79 | 111 | 78 | 110 => {
+                                "E, L, O, or N. Radar sweep."
+                            }
+                            81 | 113 | 75 | 107 | 80 | 112 | 77 | 109 => {
+                                "Q, K, P, or M. Activate Zone."
+                            }
+                            86 | 118 => "V. Inspect current piece shape and column span.",
+                            73 | 105 => "I. Inspect current piece shape and column span.",
+                            59 | 186 => "Semicolon. Inspect current piece shape and column span.",
                             306 | 340 | 344 | 160 | 161 => "Shift. Use Power-up Item.",
                             45 => "Minus. Previous music track.",
                             61 | 43 => "Plus or Equals. Next music track.",
@@ -1284,12 +1345,13 @@ impl AppFrame {
                     67 | 99 | 47 => Some(InputAction::Hold), // C, /
                     90 | 122 | 44 => Some(InputAction::RotateLeft), // Z, ,
                     88 | 120 | 46 => Some(InputAction::RotateRight), // X, .
-                    69 | 101 | 78 | 110 => Some(InputAction::Radar), // E, N
-                    81 | 113 | 77 | 109 => Some(InputAction::Zone), // Q, M
+                    86 | 118 | 73 | 105 | 59 | 186 => Some(InputAction::PieceInfo), // V, I, Semicolon
+                    69 | 101 | 76 | 108 | 79 | 111 | 78 | 110 => Some(InputAction::Radar), // E, L, O, N
+                    81 | 113 | 75 | 107 | 80 | 112 | 77 | 109 => Some(InputAction::Zone), // Q, K, P, M
                     306 | 340 | 344 | 160 | 161 => Some(InputAction::UseItem), // Left/Right Shift
-                    45 => Some(InputAction::PrevTrack), // Minus
-                    61 | 43 => Some(InputAction::NextTrack), // Equals/Plus
-                    72 | 104 => Some(InputAction::HelpMode), // H
+                    45 => Some(InputAction::PrevTrack),                        // Minus
+                    61 | 43 => Some(InputAction::NextTrack),                   // Equals/Plus
+                    72 | 104 => Some(InputAction::HelpMode),                   // H
                     _ => None,
                 };
 

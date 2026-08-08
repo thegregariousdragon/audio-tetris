@@ -152,6 +152,10 @@ impl Tetromino {
             .unwrap_or(self.x);
         max_x + 1
     }
+
+    pub fn width(&self) -> i32 {
+        self.right_column() - self.left_column() + 1
+    }
 }
 
 pub struct LockResult {
@@ -869,5 +873,17 @@ mod tests {
         t_piece.x = 7;
         assert_eq!(t_piece.left_column(), 8);
         assert_eq!(t_piece.right_column(), 10);
+    }
+
+    #[test]
+    fn test_tetromino_width() {
+        let i_piece = Tetromino::new(TetrominoType::I);
+        assert_eq!(i_piece.width(), 4);
+
+        let t_piece = Tetromino::new(TetrominoType::T);
+        assert_eq!(t_piece.width(), 3);
+
+        let o_piece = Tetromino::new(TetrominoType::O);
+        assert_eq!(o_piece.width(), 2);
     }
 }
