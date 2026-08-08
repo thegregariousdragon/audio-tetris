@@ -683,3 +683,150 @@ impl GameState {
         heights
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tetromino_initial_blocks_and_bounds() {
+        let gs = GameState::new(Difficulty::Easy);
+        let piece = Tetromino::new(TetrominoType::I);
+        assert_eq!(piece.x, 3);
+        assert_eq!(piece.y, 0);
+        assert_eq!(piece.rotation, 0);
+
+        assert!(gs.is_valid_position(&piece));
+
+        let mut invalid_piece = piece.clone();
+        invalid_piece.x = -5;
+        assert!(!gs.is_valid_position(&invalid_piece));
+    }
+
+    #[test]
+    fn test_piece_movement_and_rotation_kicks() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.current_piece = Tetromino::new(TetrominoType::T);
+
+        let initial_x = gs.current_piece.x;
+        assert!(gs.move_piece(1, 0));
+        assert_eq!(gs.current_piece.x, initial_x + 1);
+
+        assert!(gs.rotate_piece());
+        assert_eq!(gs.current_piece.rotation, 1);
+
+        assert!(gs.rotate_piece_ccw());
+        assert_eq!(gs.current_piece.rotation, 0);
+    }
+
+    #[test]
+    fn test_7_bag_randomizer() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.bag.clear();
+        gs.fill_bag();
+
+        assert_eq!(gs.bag.len(), 7);
+        let mut types = gs.bag.clone();
+        types.sort_by_key(|t| format!("{:?}", t));
+        types.dedup();
+        assert_eq!(types.len(), 7);
+    }
+
+    #[test]
+    fn test_hold_piece_mechanics() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        let initial_type = gs.current_piece.t_type;
+
+        let result = gs.hold();
+        assert!(result.is_some());
+        let (is_swap, held, _new_p) = result.unwrap();
+        assert!(!is_swap);
+        assert_eq!(held, initial_type);
+        assert_eq!(gs.hold_piece, Some(initial_type));
+        assert!(gs.has_held);
+
+        assert!(gs.hold().is_none());
+    }
+
+    #[test]
+    fn test_line_clear_and_row_shifting() {
+        let mut gs = GameState::new(Difficulty::Easy);
+
+        let bottom_y = BOARD_HEIGHT - 1;
+        for x in 0..BOARD_WIDTH {
+            gs.board[bottom_y][x] = Some(TetrominoType::I);
+        }
+
+        let initial_lines = gs.total_lines;
+        let lock_res = gs.lock_piece();
+        assert!(lock_res.cleared_lines >= 1);
+        assert_eq!(gs.total_lines, initial_lines + lock_res.cleared_lines);
+    }
+
+    #[test]
+    fn test_t_spin_detection() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.current_piece = Tetromino::new(TetrominoType::T);
+        gs.current_piece.x = 3;
+        gs.current_piece.y = 17;
+        gs.last_move_was_spin = true;
+
+        let x = gs.current_piece.x as usize;
+        let y = gs.current_piece.y as usize;
+        gs.board[y][x] = Some(TetrominoType::O);
+        gs.board[y][x + 2] = Some(TetrominoType::O);
+        gs.board[y + 2][x] = Some(TetrominoType::O);
+
+        assert!(gs.is_t_spin());
+    }
+
+    #[test]
+    fn test_zone_mode_lifecycle() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        assert!(!gs.start_zone());
+
+        gs.zone_meter = 100;
+        assert!(gs.start_zone());
+        assert!(gs.is_in_zone);
+        assert_eq!(gs.zone_timer_ms, 10000);
+
+        gs.zone_lines_cleared = 4;
+        let lines = gs.end_zone();
+        assert_eq!(lines, 4);
+        assert!(!gs.is_in_zone);
+        assert_eq!(gs.zone_meter, 0);
+    }
+
+    #[test]
+    fn test_powerup_items() {
+        let mut gs = GameState::new(Difficulty::Easy);
+
+        gs.inventory = Some(ItemType::Nuke);
+        for x in 0..BOARD_WIDTH {
+            gs.board[BOARD_HEIGHT - 1][x] = Some(TetrominoType::I);
+        }
+        let used = gs.use_item();
+        assert_eq!(used, Some(ItemType::Nuke));
+
+        gs.inventory = Some(ItemType::Magnet);
+        gs.board[10][0] = Some(TetrominoType::O);
+        gs.use_item();
+        assert!(gs.board[BOARD_HEIGHT - 1][0].is_some());
+
+        gs.inventory = Some(ItemType::Laser);
+        gs.board[5][2] = Some(TetrominoType::I);
+        gs.use_item();
+        assert!(gs.board[5][2].is_none());
+    }
+
+    #[test]
+    fn test_topography_calculation() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        assert_eq!(gs.get_topography(), vec![0; BOARD_WIDTH]);
+
+        gs.board[BOARD_HEIGHT - 5][0] = Some(TetrominoType::I);
+        let topo = gs.get_topography();
+        assert_eq!(topo[0], 5);
+        assert_eq!(topo[1], 0);
+    }
+}
