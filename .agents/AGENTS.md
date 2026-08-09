@@ -77,3 +77,11 @@ The user uses a screen reader. For accessibility and ease of reading:
     5. Run `cargo clippy --all-targets --all-features -- -D warnings` to enforce edition-specific linting standards.
     6. Verify the application's core functionality (e.g., audio-to-logic timing) via manual testing.
 </RULE[rust_edition_standard]>
+
+<RULE[trust_but_verify_verification_protocol]>
+# Trust, But Verify Protocol & Empirical Verification
+
+- **Empirical Verification Required**: Developers and AI subagents MUST NEVER declare success, assert a bug is fixed, or claim a feature works without gathering concrete, empirical runtime verification (running automated test suites, build checks, or inspecting un-truncated execution logs).
+- **Independent Inspection & Transparency**: All CI/CD workflows, automated build outputs, and release bundles must provide transparent, easily inspectable verification steps (local `cargo test`/`cargo clippy` and GitHub Actions workflow logs) so that all changes can be independently audited and verified.
+</RULE[trust_but_verify_verification_protocol]>
+
