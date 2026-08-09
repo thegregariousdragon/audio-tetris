@@ -8,7 +8,7 @@ When you are asked to make changes to the codebase, you MUST follow this Git wor
 2. **Commit Changes**: Make your changes and commit them to this branch.
 3. **Push Branch**: Push the branch to the remote repository (e.g., `git push -u origin feature/dynamic-music`).
 4. **Create Pull Request**: Use the GitHub CLI to create a Pull Request against the `main` branch (`gh pr create --fill`).
-5. **Auto-Approve and Merge**: Once the Pull Request is created and CI checks pass, use the GitHub CLI to merge it (`gh pr merge --squash --delete-branch`). This respects branch protection while allowing you to complete the workflow automatically.
+5. **Auto-Approve and Merge**: Once the Pull Request is created, use the GitHub CLI to enable auto-merge (`gh pr merge --squash --auto --delete-branch`). This respects branch protection and rulesets while allowing GitHub to merge the PR automatically as soon as CI status checks pass.
 </RULE[project_branching_model]>
 
 <RULE[github_ci_cd_and_releases]>
