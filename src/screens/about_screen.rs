@@ -1,6 +1,6 @@
 pub fn get_about_lines() -> Vec<&'static str> {
     vec![
-        "Audio Tetris v1.0.1",
+        "Audio Tetris v1.0.2",
         "Built with Rust, wxDragon, Rodio, and Tolk.",
         "Designed for seamless accessibility with screen readers and positional audio.",
         "Features 5 save slots, high score tracking, Zone Mode, and power-up items.",
