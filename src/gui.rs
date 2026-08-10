@@ -472,12 +472,12 @@ impl AppFrame {
                                     }
                                     3 => {
                                         *screen_state.lock().unwrap() =
-                                            AppScreen::Settings { selection: 0 };
+                                            AppScreen::HowToPlay { scroll_line: 0 };
+                                        is_initial_load = true;
                                     }
                                     4 => {
                                         *screen_state.lock().unwrap() =
-                                            AppScreen::HowToPlay { scroll_line: 0 };
-                                        is_initial_load = true;
+                                            AppScreen::Settings { selection: 0 };
                                     }
                                     _ => {}
                                 }
@@ -790,7 +790,7 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 5 };
+                                        AppScreen::PauseMenu { selection: 4 };
                                 } else {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 4 };
@@ -883,7 +883,7 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 4 };
+                                        AppScreen::PauseMenu { selection: 3 };
                                 } else {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 3 };
@@ -1383,9 +1383,11 @@ impl AppFrame {
                 67 | 99 | 47 => Some(InputAction::Hold),   // C, Slash
                 69 | 101 | 76 | 108 | 82 | 114 => Some(InputAction::Radar), // E, L, R
                 81 | 113 | 75 | 107 => Some(InputAction::Zone), // Q, K
-                86 | 118 | 59 | 186 | 73 | 105 => Some(InputAction::PieceInfo), // V, Semicolon, I
+                86 | 118 | 59 | 186 => Some(InputAction::PieceInfo), // V, Semicolon
                 70 | 102 | 306 | 340 | 344 | 160 | 161 => Some(InputAction::UseItem), // F, Shift
-                80 | 112 => Some(InputAction::Start),      // P
+                73 | 105 | 339 => Some(InputAction::PrevTrack), // I, F10
+                79 | 111 | 338 => Some(InputAction::Mute), // O, F9
+                80 | 112 => Some(InputAction::NextTrack),  // P, F11
                 72 | 104 => Some(InputAction::HelpMode),   // H
                 _ => None,
             };

@@ -3,8 +3,8 @@ pub fn get_pause_menu_options() -> Vec<&'static str> {
         "Resume Game",
         "Save Game",
         "Abandon Game (Unsaved progress will be lost)",
-        "Settings",
         "How to Play",
+        "Settings",
     ]
 }
 
