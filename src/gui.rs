@@ -466,36 +466,18 @@ impl AppFrame {
                                             AppScreen::SaveScreen { selection: 0 };
                                     }
                                     2 => {
-                                        *screen_state.lock().unwrap() =
-                                            AppScreen::LoadScreen { selection: 0 };
-                                    }
-                                    3 => {
-                                        *screen_state.lock().unwrap() =
-                                            AppScreen::Leaderboard { selection: 0 };
-                                    }
-                                    4 => {
-                                        *screen_state.lock().unwrap() =
-                                            AppScreen::HowToPlay { scroll_line: 0 };
-                                        is_initial_load = true;
-                                    }
-                                    5 => {
-                                        *screen_state.lock().unwrap() =
-                                            AppScreen::Settings { selection: 0 };
-                                    }
-                                    6 => {
-                                        *screen_state.lock().unwrap() =
-                                            AppScreen::About { scroll_line: 0 };
-                                        is_initial_load = true;
-                                    }
-                                    7 => {
                                         *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
                                             action: ConfirmAction::AbandonGame,
                                         };
                                     }
-                                    8 => {
-                                        *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
-                                            action: ConfirmAction::QuitApp,
-                                        };
+                                    3 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::HowToPlay { scroll_line: 0 };
+                                        is_initial_load = true;
+                                    }
+                                    4 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::Settings { selection: 0 };
                                     }
                                     _ => {}
                                 }
@@ -645,7 +627,7 @@ impl AppFrame {
                                     let in_prog = *game_in_progress.lock().unwrap();
                                     if in_prog {
                                         *screen_state.lock().unwrap() =
-                                            AppScreen::PauseMenu { selection: 3 };
+                                            AppScreen::MainMenu { selection: 4 };
                                     } else {
                                         *screen_state.lock().unwrap() =
                                             AppScreen::MainMenu { selection: 2 };
@@ -662,7 +644,7 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 3 };
+                                        AppScreen::MainMenu { selection: 4 };
                                 } else {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 2 };
@@ -808,7 +790,7 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 5 };
+                                        AppScreen::PauseMenu { selection: 4 };
                                 } else {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 4 };
@@ -901,7 +883,7 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 4 };
+                                        AppScreen::PauseMenu { selection: 3 };
                                 } else {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 3 };
@@ -942,7 +924,7 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 6 };
+                                        AppScreen::MainMenu { selection: 7 };
                                 } else {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 5 };
@@ -985,7 +967,7 @@ impl AppFrame {
                             let in_prog = *game_in_progress.lock().unwrap();
                             if in_prog {
                                 *screen_state.lock().unwrap() =
-                                    AppScreen::PauseMenu { selection: 0 };
+                                    AppScreen::PauseMenu { selection: 2 };
                             } else {
                                 *screen_state.lock().unwrap() =
                                     AppScreen::MainMenu { selection: 0 };
@@ -1005,7 +987,12 @@ impl AppFrame {
                                 screen_changed = true;
                             }
                             InputAction::Radar => {
+                                let max_h = gs.max_column_height();
                                 audio_engine.play_radar_sweep(gs.get_topography());
+                                tolk.output(
+                                    format!("Radar sweep: highest stack height {}", max_h),
+                                    true,
+                                );
                             }
                             InputAction::Left => {
                                 if gs.move_left() {
@@ -1013,6 +1000,10 @@ impl AppFrame {
                                     if gs.current_piece.x == 0 || gs.current_piece.x == 9 {
                                         audio_engine.play_aligned_sound();
                                     }
+                                    tolk.output(
+                                        format!("Left, column {}", gs.current_piece.x + 1),
+                                        true,
+                                    );
                                 } else {
                                     audio_engine.play_aligned_sound();
                                 }
@@ -1023,6 +1014,10 @@ impl AppFrame {
                                     if gs.current_piece.x == 0 || gs.current_piece.x == 9 {
                                         audio_engine.play_aligned_sound();
                                     }
+                                    tolk.output(
+                                        format!("Right, column {}", gs.current_piece.x + 1),
+                                        true,
+                                    );
                                 } else {
                                     audio_engine.play_aligned_sound();
                                 }
@@ -1030,6 +1025,22 @@ impl AppFrame {
                             InputAction::RotateRight => {
                                 if gs.rotate_cw() {
                                     audio_engine.play_rotate_cw_sound(gs.current_piece.y);
+                                    let rot_deg = match gs.current_piece.rotation {
+                                        0 => "0 degrees",
+                                        1 => "90 degrees",
+                                        2 => "180 degrees",
+                                        3 => "270 degrees",
+                                        _ => "",
+                                    };
+                                    let left = gs.current_piece.left_column() + 1;
+                                    let right = gs.current_piece.right_column() + 1;
+                                    tolk.output(
+                                        format!(
+                                            "Rotated Right, {}. Columns {} through {}",
+                                            rot_deg, left, right
+                                        ),
+                                        true,
+                                    );
                                 } else {
                                     audio_engine.play_aligned_sound();
                                 }
@@ -1037,6 +1048,22 @@ impl AppFrame {
                             InputAction::RotateLeft => {
                                 if gs.rotate_ccw() {
                                     audio_engine.play_rotate_ccw_sound(gs.current_piece.y);
+                                    let rot_deg = match gs.current_piece.rotation {
+                                        0 => "0 degrees",
+                                        1 => "90 degrees",
+                                        2 => "180 degrees",
+                                        3 => "270 degrees",
+                                        _ => "",
+                                    };
+                                    let left = gs.current_piece.left_column() + 1;
+                                    let right = gs.current_piece.right_column() + 1;
+                                    tolk.output(
+                                        format!(
+                                            "Rotated Left, {}. Columns {} through {}",
+                                            rot_deg, left, right
+                                        ),
+                                        true,
+                                    );
                                 } else {
                                     audio_engine.play_aligned_sound();
                                 }
@@ -1063,27 +1090,36 @@ impl AppFrame {
                                 tolk.output(text, true);
                             }
                             InputAction::Hold => {
-                                if let Some((swapped, _prev, _new)) = gs.hold() {
+                                let callout_tech =
+                                    settings.lock().unwrap().piece_callouts_technical;
+                                if let Some((swapped, prev, new_p)) = gs.hold() {
                                     if swapped {
                                         audio_engine.play_hold_swap_sound();
                                     } else {
                                         audio_engine.play_hold_sound();
                                     }
-                                    audio_engine.play_spawn_sound(gs.current_piece.t_type);
-                                    let callout_tech =
-                                        settings.lock().unwrap().piece_callouts_technical;
                                     tolk.output(
-                                        gs.current_piece.t_type.as_str(callout_tech),
-                                        false,
+                                        format!(
+                                            "Held {}. New piece: {}",
+                                            prev.as_str(callout_tech),
+                                            new_p.as_str(callout_tech)
+                                        ),
+                                        true,
                                     );
+                                    audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                 } else {
                                     audio_engine.play_hold_denied_sound();
+                                    tolk.output("Already held piece this turn", true);
                                 }
                             }
                             InputAction::Select => {}
                             InputAction::Down => {
                                 if gs.soft_drop() {
                                     audio_engine.play_soft_drop_sound(gs.current_piece.y);
+                                    tolk.output(
+                                        format!("Soft drop, row {}", gs.current_piece.y + 1),
+                                        true,
+                                    );
                                 }
                             }
                             InputAction::HardDrop => {
@@ -1340,19 +1376,19 @@ impl AppFrame {
                 316 | 68 | 100 => Some(InputAction::Right), // RIGHT Arrow / D
                 13 | 370 => Some(InputAction::Select),     // Return / Enter
                 27 => Some(InputAction::Back),             // Escape
+                9 => Some(InputAction::Start),             // Tab
                 32 => Some(InputAction::HardDrop),         // Space
-                90 | 122 => Some(InputAction::RotateLeft), // Z key
-                88 | 120 => Some(InputAction::RotateRight), // X key
-                67 | 99 => Some(InputAction::Hold),        // C key
-                82 | 114 => Some(InputAction::Radar),      // R key
-                70 | 102 => Some(InputAction::UseItem),    // F key
-                80 | 112 => Some(InputAction::Start),      // P key
-                306 => Some(InputAction::Zone),            // R-Shift key
-                340 => Some(InputAction::NextTrack),       // F11 key
-                339 => Some(InputAction::PrevTrack),       // F10 key
-                338 => Some(InputAction::Mute),            // F9 key
-                72 | 104 => Some(InputAction::HelpMode),   // H key
-                73 | 105 => Some(InputAction::PieceInfo),  // I key
+                90 | 122 | 44 => Some(InputAction::RotateLeft), // Z, Comma
+                88 | 120 | 46 => Some(InputAction::RotateRight), // X, Period
+                67 | 99 | 47 => Some(InputAction::Hold),   // C, Slash
+                69 | 101 | 76 | 108 | 82 | 114 => Some(InputAction::Radar), // E, L, R
+                81 | 113 | 75 | 107 => Some(InputAction::Zone), // Q, K
+                86 | 118 | 59 | 186 => Some(InputAction::PieceInfo), // V, Semicolon
+                70 | 102 | 306 | 340 | 344 | 160 | 161 => Some(InputAction::UseItem), // F, Shift
+                73 | 105 | 339 => Some(InputAction::PrevTrack), // I, F10
+                79 | 111 | 338 => Some(InputAction::Mute), // O, F9
+                80 | 112 => Some(InputAction::NextTrack),  // P, F11
+                72 | 104 => Some(InputAction::HelpMode),   // H
                 _ => None,
             };
 

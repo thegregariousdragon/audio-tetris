@@ -2,13 +2,9 @@ pub fn get_pause_menu_options() -> Vec<&'static str> {
     vec![
         "Resume Game",
         "Save Game",
-        "Load Game",
-        "High Scores & Stats",
+        "Abandon Game (Unsaved progress will be lost)",
         "How to Play",
         "Settings",
-        "About",
-        "Abandon Game",
-        "Quit Game",
     ]
 }
 
