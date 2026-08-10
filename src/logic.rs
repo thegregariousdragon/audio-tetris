@@ -1,11 +1,12 @@
 use crate::settings::Difficulty;
 use rand::Rng;
 use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
 
 pub const BOARD_WIDTH: usize = 10;
 pub const BOARD_HEIGHT: usize = 20;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum TetrominoType {
     I,
     J,
@@ -16,7 +17,7 @@ pub enum TetrominoType {
     Z,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ItemType {
     Magnet,
     Nuke,
@@ -60,7 +61,7 @@ impl TetrominoType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Tetromino {
     pub t_type: TetrominoType,
     pub x: i32,
@@ -203,6 +204,7 @@ impl Tetromino {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GameState {
     pub board: [[Option<TetrominoType>; BOARD_WIDTH]; BOARD_HEIGHT],
     pub item_board: [[Option<ItemType>; BOARD_WIDTH]; BOARD_HEIGHT],
@@ -324,13 +326,13 @@ impl GameState {
         true
     }
 
+    #[allow(dead_code)]
     pub fn can_move_down(&self) -> bool {
-        let mut next = self.current_piece.clone();
-        next.y += 1;
-        self.is_valid_position(&next)
+        let mut new_piece = self.current_piece.clone();
+        new_piece.y += 1;
+        self.is_valid_position(&new_piece)
     }
 
-    #[allow(dead_code)]
     pub fn get_ghost_y(&self) -> i32 {
         let mut ghost = self.current_piece.clone();
         while self.is_valid_position(&Tetromino {
@@ -363,14 +365,14 @@ impl GameState {
         let end_rot = (start_rot + 1) % 4;
         let kicks = self.current_piece.get_kicks(start_rot, end_rot);
 
-        for &(dx, dy) in &kicks {
-            let mut new_piece = self.current_piece.clone();
-            new_piece.rotation = end_rot;
-            new_piece.x += dx;
-            new_piece.y += dy;
+        for &(kx, ky) in &kicks {
+            let mut test_piece = self.current_piece.clone();
+            test_piece.rotation = end_rot;
+            test_piece.x += kx;
+            test_piece.y += ky;
 
-            if self.is_valid_position(&new_piece) {
-                self.current_piece = new_piece;
+            if self.is_valid_position(&test_piece) {
+                self.current_piece = test_piece;
                 self.last_move_was_spin = true;
                 return true;
             }
@@ -380,17 +382,17 @@ impl GameState {
 
     pub fn rotate_piece_ccw(&mut self) -> bool {
         let start_rot = self.current_piece.rotation;
-        let end_rot = (start_rot + 3) % 4;
+        let end_rot = if start_rot == 0 { 3 } else { start_rot - 1 };
         let kicks = self.current_piece.get_kicks(start_rot, end_rot);
 
-        for &(dx, dy) in &kicks {
-            let mut new_piece = self.current_piece.clone();
-            new_piece.rotation = end_rot;
-            new_piece.x += dx;
-            new_piece.y += dy;
+        for &(kx, ky) in &kicks {
+            let mut test_piece = self.current_piece.clone();
+            test_piece.rotation = end_rot;
+            test_piece.x += kx;
+            test_piece.y += ky;
 
-            if self.is_valid_position(&new_piece) {
-                self.current_piece = new_piece;
+            if self.is_valid_position(&test_piece) {
+                self.current_piece = test_piece;
                 self.last_move_was_spin = true;
                 return true;
             }
@@ -398,6 +400,7 @@ impl GameState {
         false
     }
 
+    #[allow(dead_code)]
     pub fn is_perfect_fit(&self) -> bool {
         let mut ghost = self.current_piece.clone();
 
@@ -705,6 +708,39 @@ impl GameState {
             }
         }
         heights
+    }
+
+    pub fn move_left(&mut self) -> bool {
+        self.move_piece(-1, 0)
+    }
+
+    pub fn move_right(&mut self) -> bool {
+        self.move_piece(1, 0)
+    }
+
+    pub fn move_down(&mut self) -> bool {
+        self.move_piece(0, 1)
+    }
+
+    pub fn soft_drop(&mut self) -> bool {
+        self.move_piece(0, 1)
+    }
+
+    pub fn rotate_cw(&mut self) -> bool {
+        self.rotate_piece()
+    }
+
+    pub fn rotate_ccw(&mut self) -> bool {
+        self.rotate_piece_ccw()
+    }
+
+    pub fn hard_drop(&mut self) -> LockResult {
+        self.current_piece.y = self.get_ghost_y();
+        self.lock_piece()
+    }
+
+    pub fn max_column_height(&self) -> u32 {
+        self.get_topography().into_iter().max().unwrap_or(0)
     }
 }
 

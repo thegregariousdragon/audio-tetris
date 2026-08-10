@@ -4,20 +4,14 @@ use std::sync::{Arc, Mutex};
 use wxdragon::prelude::*;
 
 use crate::audio::AudioEngine;
+use crate::db::Database;
 use crate::logic::GameState;
+use crate::screens::{
+    AppScreen, ConfirmAction, about_screen, confirm_dialog, how_to_play, in_game_screen,
+    leaderboard, load_screen, main_menu, pause_menu, save_screen, settings_screen,
+};
 use crate::settings::{Difficulty, Settings};
 use tolk::Tolk;
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum AppScreen {
-    MainMenu { selection: usize },
-    Settings { selection: usize },
-    SpeechVerbosity { selection: usize },
-    HowToPlay { scroll_line: usize },
-    About { scroll_line: usize },
-    InGame,
-    KeyDescriber { esc_count: usize },
-}
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum InputAction {
@@ -42,52 +36,6 @@ pub enum InputAction {
     PieceInfo,
 }
 
-fn get_how_to_play_lines() -> Vec<String> {
-    vec![
-        "How to Play Audio Tetris".to_string(),
-        "".to_string(),
-        "Game Summary:".to_string(),
-        "Audio Tetris is a fully screen-reader compatible take on the classic block-stacking puzzle game. Your goal is to navigate falling shapes to the bottom of the board, fitting them together to form solid horizontal lines. Clearing lines earns points and keeps the board from filling up!".to_string(),
-        "".to_string(),
-        "Game Features:".to_string(),
-        "- Radar System: Activate the radar to hear the topography of the board and plan your next move.".to_string(),
-        "- Zone Mode: Build up your Zone Meter by clearing lines. Activate the Zone to pause the falling pieces and rack up massive bonus points by clearing multiple lines at once!".to_string(),
-        "- Power-ups: Acquire special items during gameplay to help you out of tough spots. Keep an ear out for item spawn and acquisition sounds.".to_string(),
-        "- Advanced Scoring: Pull off T-Spins, Back-to-Back clears, and Combos for high scores and satisfying sound effects.".to_string(),
-        "".to_string(),
-        "Keyboard Controls:".to_string(),
-        "Press the H key while on the Main Menu to enter Keyboard Help Mode. In this mode, you can press any key to hear exactly what it does in the game. It's the best way to learn the controls at your own pace!".to_string(),
-        "".to_string(),
-        "Settings Menu:".to_string(),
-        "1. Difficulty: Controls the starting speed and fall rate of the game.".to_string(),
-        "2. Speech Verbosity: Opens a sub-menu to customize screen reader callouts for pieces, scoring, and zones.".to_string(),
-        "3. Voice Cues Volume: Adjusts the volume of the screen reader's announcements.".to_string(),
-        "4. Sound Effects Volume: Adjusts the volume of game sounds like dropping, rotating, and clearing lines.".to_string(),
-        "5. Background Music: Toggles the background music on or off.".to_string(),
-        "6. Background Music Volume: Adjusts the volume of the background music.".to_string(),
-    ]
-}
-
-fn get_about_lines() -> Vec<String> {
-    vec![
-        "About Audio Tetris".to_string(),
-        format!("Version {}", env!("APP_VERSION")),
-        "Copyright © 2026 Gregory Lopez and Google Antigravity".to_string(),
-        "Released under the MIT License.".to_string(),
-        "".to_string(),
-        "This project aims to provide a fully accessible, natively compiled Tetris experience for visually impaired gamers, featuring high-performance audio, zero-latency inputs, and direct screen reader speech integration via Tolk.".to_string(),
-        "".to_string(),
-        "Open Source Components & Licenses:".to_string(),
-        "- Rust Language: Developed by the Rust Foundation (MIT / Apache 2.0 License).".to_string(),
-        "- wxDragon: Native GUI bindings authored by Allen Dang (MIT License).".to_string(),
-        "- Tolk: Screen reader abstraction library authored by Leonard de Ruijter (LGPL License).".to_string(),
-        "- Rodio: Audio playback library authored by Tomaka and the RustAudio team (MIT / Apache 2.0 License).".to_string(),
-        "- Serde: Data serialization framework authored by David Tolnay (MIT / Apache 2.0 License).".to_string(),
-        "".to_string(),
-        "Press Backspace or Escape to return to the Main Menu.".to_string(),
-    ]
-}
-
 pub struct AppFrame {
     frame: Frame,
     panel: Panel,
@@ -99,6 +47,7 @@ pub struct AppFrame {
     settings: Arc<Mutex<Settings>>,
     screen: Arc<Mutex<AppScreen>>,
     game_in_progress: Arc<Mutex<bool>>,
+    db: Arc<Database>,
 }
 
 impl AppFrame {
@@ -110,6 +59,8 @@ impl AppFrame {
         let settings = Arc::new(Mutex::new(settings_data.clone()));
         let screen = Arc::new(Mutex::new(AppScreen::MainMenu { selection: 0 }));
         let game_in_progress = Arc::new(Mutex::new(false));
+
+        let db = Arc::new(Database::new("audio_tetris.db").expect("Failed to initialize database"));
 
         let title = format!("Audio Tetris v{}", env!("APP_VERSION"));
         let frame = Frame::builder()
@@ -129,12 +80,11 @@ impl AppFrame {
 
         panel.set_sizer(sizer, true);
 
-        let diff = settings_data.difficulty;
-        let game_state = Arc::new(Mutex::new(GameState::new(diff)));
+        let game_state = Arc::new(Mutex::new(GameState::new(settings_data.difficulty)));
         let audio_engine = Rc::new(AudioEngine::new(&settings_data).unwrap());
         let timer = Rc::new(RefCell::new(wxdragon::timer::Timer::new(&frame)));
 
-        Self {
+        let app_frame = Self {
             frame,
             panel,
             text_display,
@@ -145,7 +95,16 @@ impl AppFrame {
             settings,
             screen,
             game_in_progress,
-        }
+            db,
+        };
+
+        app_frame.render_screen(true, true);
+        app_frame
+    }
+
+    pub fn show(&self) {
+        self.frame.show(true);
+        self.timer.borrow_mut().start(16, false);
     }
 
     pub fn render_screen(&self, speak: bool, initial_load: bool) {
@@ -154,320 +113,138 @@ impl AppFrame {
         let in_prog = *self.game_in_progress.lock().unwrap();
 
         let (display_text, spoken_text) = match screen {
-            AppScreen::MainMenu { selection } => {
-                let opt0 = if in_prog { "Resume Game" } else { "New Game" };
-                let options: [&str; 5] = [opt0, "How to Play", "Settings", "About", "Quit"];
-                let mut text = String::from("Main Menu\n\n");
-                for (i, opt) in options.iter().enumerate() {
-                    if i == selection {
-                        text.push_str(&format!("-> {}\n", opt));
-                    } else {
-                        text.push_str(&format!("   {}\n", opt));
-                    }
-                }
-                (text, options[selection].to_string())
+            AppScreen::MainMenu { selection } => main_menu::render_main_menu(selection, in_prog),
+            AppScreen::PauseMenu { selection } => pause_menu::render_pause_menu(selection),
+            AppScreen::SaveScreen { selection } => {
+                let slots = self.db.get_all_save_slots();
+                save_screen::render_save_screen(selection, &slots)
             }
-            AppScreen::Settings { selection } => {
-                let options = [
-                    format!("Difficulty: {}", s.difficulty.as_str()),
-                    "Speech Verbosity".to_string(),
-                    format!("Voice Cues Volume: {}% (controlled by your screen reader)", (s.voice_volume * 100.0) as i32),
-                    format!("Sound Effects Volume: {}%", (s.sfx_volume * 100.0) as i32),
-                    format!("Background Music: {}", if s.bgm_enabled { "ON" } else { "OFF" }),
-                    format!("Background Music Volume: {}%", (s.bgm_volume * 100.0) as i32),
-                    "Back".to_string(),
-                ];
-                let mut text = String::from("Settings\nUse Left and Right arrows to adjust values.\n\n");
-                for (i, opt) in options.iter().enumerate() {
-                    if i == selection {
-                        text.push_str(&format!("->{} {}\n", " ", opt));
-                    } else {
-                        text.push_str(&format!("   {}\n", opt));
-                    }
-                }
-                (text, options[selection].clone())
+            AppScreen::LoadScreen { selection } => {
+                let slots = self.db.get_all_save_slots();
+                load_screen::render_load_screen(selection, &slots)
             }
+            AppScreen::Leaderboard { selection } => {
+                let scores = self.db.get_high_scores(10);
+                let stats = self.db.get_player_stats();
+                leaderboard::render_leaderboard(selection, &scores, &stats)
+            }
+            AppScreen::Settings { selection } => settings_screen::render_settings(selection, &s),
             AppScreen::SpeechVerbosity { selection } => {
-                let options = [
-                    format!("Piece Callouts: {}", if s.piece_callouts_technical { "Terse" } else { "Descriptive" }),
-                    format!("Scoring Details: {}", if s.scoring_details_advanced { "Advanced" } else { "Simple" }),
-                    format!("Zone Alerts: {}", if s.zone_alerts { "ON" } else { "OFF" }),
-                    "Back".to_string(),
-                ];
-                let mut text = String::from("Speech Verbosity\nUse Left and Right arrows to adjust values.\n\n");
-                for (i, opt) in options.iter().enumerate() {
-                    if i == selection {
-                        text.push_str(&format!("->{} {}\n", " ", opt));
-                    } else {
-                        text.push_str(&format!("   {}\n", opt));
-                    }
-                }
-                (text, if initial_load { format!("Speech Verbosity Menu. {}", options[selection].clone()) } else { options[selection].clone() })
+                settings_screen::render_speech_verbosity(selection, &s)
             }
             AppScreen::HowToPlay { scroll_line } => {
-                let lines = get_how_to_play_lines();
-                let mut text = String::new();
-                for (i, line) in lines.iter().enumerate() {
-                    if i == scroll_line {
-                        text.push_str(&format!("-> {}\n", line));
-                    } else {
-                        text.push_str(&format!("   {}\n", line));
-                    }
-                }
-
-                let line_text = if scroll_line < lines.len() { lines[scroll_line].clone() } else { "".to_string() };
-                let spoken = if initial_load {
-                    format!("How to play. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", line_text)
-                } else {
-                    line_text
-                };
-
-                (text, spoken)
+                how_to_play::render_how_to_play(scroll_line, initial_load)
             }
-            AppScreen::About { scroll_line } => {
-                let lines = get_about_lines();
-                let mut text = String::new();
-                for (i, line) in lines.iter().enumerate() {
-                    if i == scroll_line {
-                        text.push_str(&format!("-> {}\n", line));
-                    } else {
-                        text.push_str(&format!("   {}\n", line));
-                    }
-                }
-
-                let line_text = if scroll_line < lines.len() { lines[scroll_line].clone() } else { "".to_string() };
-                let spoken = if initial_load {
-                    format!("About Audio Tetris. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}", line_text)
-                } else {
-                    line_text
-                };
-
-                (text, spoken)
-            }
+            AppScreen::About { scroll_line } => about_screen::render_about(scroll_line, initial_load),
+            AppScreen::ConfirmDialog { action } => confirm_dialog::render_confirm_dialog(action),
             AppScreen::InGame => {
                 let gs = self.game_state.lock().unwrap();
-                let text = format!("In Game\nLevel: {}\nScore: {}\nLines: {}\n\nPress Escape or Start to pause game.", gs.level, gs.score, gs.total_lines);
-                (text, "Game started. Use arrow keys to play.".to_string())
+                in_game_screen::render_in_game(&gs)
             }
-            AppScreen::KeyDescriber { .. } => {
-                ("Keyboard Help Mode\nPress any key to hear its function.\nPress Escape twice to exit.".to_string(), "".to_string())
-            }
+            AppScreen::KeyDescriber { .. } => (
+                "Keyboard Help Mode\nPress any key to hear its function.\nPress Escape twice to exit."
+                    .to_string(),
+                "Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit."
+                    .to_string(),
+            ),
         };
 
         self.text_display.set_label(&display_text);
 
         if speak && !spoken_text.is_empty() {
-            self.tolk.speak(spoken_text, true);
+            self.tolk.output(&spoken_text, true);
         }
     }
 
     pub fn setup_events(&mut self) {
+        let text_ctrl = self.text_display;
         let game_state = self.game_state.clone();
         let audio_engine = self.audio_engine.clone();
         let tolk_instance = self.tolk.clone();
+        let settings = self.settings.clone();
         let screen_state = self.screen.clone();
         let game_in_progress = self.game_in_progress.clone();
-        let settings = self.settings.clone();
-        let text_display = self.text_display;
+        let db = self.db.clone();
         let frame = self.frame;
 
-        // 2. SHARED INPUT LOGIC
-        let shared_logic = {
+        let render_in_closure = {
+            let screen_state = screen_state.clone();
+            let settings = settings.clone();
+            let game_state = game_state.clone();
+            let game_in_progress = game_in_progress.clone();
+            let tolk = tolk_instance.clone();
+            let db = db.clone();
+
+            move |speak: bool, initial_load: bool| {
+                let screen = *screen_state.lock().unwrap();
+                let s = settings.lock().unwrap();
+                let in_prog = *game_in_progress.lock().unwrap();
+
+                let (display_text, spoken_text) = match screen {
+                    AppScreen::MainMenu { selection } => main_menu::render_main_menu(selection, in_prog),
+                    AppScreen::PauseMenu { selection } => pause_menu::render_pause_menu(selection),
+                    AppScreen::SaveScreen { selection } => {
+                        let slots = db.get_all_save_slots();
+                        save_screen::render_save_screen(selection, &slots)
+                    }
+                    AppScreen::LoadScreen { selection } => {
+                        let slots = db.get_all_save_slots();
+                        load_screen::render_load_screen(selection, &slots)
+                    }
+                    AppScreen::Leaderboard { selection } => {
+                        let scores = db.get_high_scores(10);
+                        let stats = db.get_player_stats();
+                        leaderboard::render_leaderboard(selection, &scores, &stats)
+                    }
+                    AppScreen::Settings { selection } => {
+                        settings_screen::render_settings(selection, &s)
+                    }
+                    AppScreen::SpeechVerbosity { selection } => {
+                        settings_screen::render_speech_verbosity(selection, &s)
+                    }
+                    AppScreen::HowToPlay { scroll_line } => {
+                        how_to_play::render_how_to_play(scroll_line, initial_load)
+                    }
+                    AppScreen::About { scroll_line } => {
+                        about_screen::render_about(scroll_line, initial_load)
+                    }
+                    AppScreen::ConfirmDialog { action } => {
+                        confirm_dialog::render_confirm_dialog(action)
+                    }
+                    AppScreen::InGame => {
+                        let gs = game_state.lock().unwrap();
+                        in_game_screen::render_in_game(&gs)
+                    }
+                    AppScreen::KeyDescriber { .. } => (
+                        "Keyboard Help Mode\nPress any key to hear its function.\nPress Escape twice to exit.".to_string(),
+                        "Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit.".to_string(),
+                    ),
+                };
+
+                text_ctrl.set_label(&display_text);
+                if speak && !spoken_text.is_empty() {
+                    tolk.output(&spoken_text, true);
+                }
+            }
+        };
+
+        // 1. KEY DOWN HANDLER
+        let on_action = {
             let game_state = game_state.clone();
             let audio_engine = audio_engine.clone();
             let tolk = tolk_instance.clone();
             let settings = settings.clone();
             let screen_state = screen_state.clone();
             let game_in_progress = game_in_progress.clone();
+            let render_in_closure = render_in_closure.clone();
+            let db = db.clone();
 
             Rc::new(RefCell::new(move |action: InputAction| {
-                let render_in_closure = |speak: bool, initial_load: bool| {
-                    let current_screen = *screen_state.lock().unwrap();
-                    let s = settings.lock().unwrap();
-                    let in_prog = *game_in_progress.lock().unwrap();
-
-                    let (display_text, spoken_text) = match current_screen {
-                        AppScreen::MainMenu { selection } => {
-                            let opt0 = if in_prog { "Resume Game" } else { "New Game" };
-                            let options: [&str; 5] =
-                                [opt0, "How to Play", "Settings", "About", "Quit"];
-                            let mut text = String::from("Main Menu\n\n");
-                            for (i, opt) in options.iter().enumerate() {
-                                if i == selection {
-                                    text.push_str(&format!("->{} {}\n", " ", opt));
-                                } else {
-                                    text.push_str(&format!("   {}\n", opt));
-                                }
-                            }
-                            (
-                                text,
-                                format!(
-                                    "{} {} of {}",
-                                    options[selection],
-                                    selection + 1,
-                                    options.len()
-                                ),
-                            )
-                        }
-                        AppScreen::Settings { selection } => {
-                            let options = [
-                                format!("Difficulty: {}", s.difficulty.as_str()),
-                                "Speech Verbosity".to_string(),
-                                format!(
-                                    "Voice Cues Volume: {}% (controlled by your screen reader)",
-                                    (s.voice_volume * 100.0) as i32
-                                ),
-                                format!("Sound Effects Volume: {}%", (s.sfx_volume * 100.0) as i32),
-                                format!(
-                                    "Background Music: {}",
-                                    if s.bgm_enabled { "ON" } else { "OFF" }
-                                ),
-                                format!(
-                                    "Background Music Volume: {}%",
-                                    (s.bgm_volume * 100.0) as i32
-                                ),
-                                "Back".to_string(),
-                            ];
-                            let mut text = String::from(
-                                "Settings\nUse Left and Right arrows to adjust values.\n\n",
-                            );
-                            for (i, opt) in options.iter().enumerate() {
-                                if i == selection {
-                                    text.push_str(&format!("->{} {}\n", " ", opt));
-                                } else {
-                                    text.push_str(&format!("   {}\n", opt));
-                                }
-                            }
-                            (
-                                text,
-                                format!(
-                                    "{} {} of {}",
-                                    options[selection],
-                                    selection + 1,
-                                    options.len()
-                                ),
-                            )
-                        }
-                        AppScreen::SpeechVerbosity { selection } => {
-                            let options = [
-                                format!(
-                                    "Piece Callouts: {}",
-                                    if s.piece_callouts_technical {
-                                        "Terse"
-                                    } else {
-                                        "Descriptive"
-                                    }
-                                ),
-                                format!(
-                                    "Scoring Details: {}",
-                                    if s.scoring_details_advanced {
-                                        "Advanced"
-                                    } else {
-                                        "Simple"
-                                    }
-                                ),
-                                format!(
-                                    "Zone Alerts: {}",
-                                    if s.zone_alerts { "ON" } else { "OFF" }
-                                ),
-                                "Back".to_string(),
-                            ];
-                            let mut text = String::from(
-                                "Speech Verbosity\nUse Left and Right arrows to adjust values.\n\n",
-                            );
-                            for (i, opt) in options.iter().enumerate() {
-                                if i == selection {
-                                    text.push_str(&format!("->{} {}\n", " ", opt));
-                                } else {
-                                    text.push_str(&format!("   {}\n", opt));
-                                }
-                            }
-                            let spoken = format!(
-                                "{} {} of {}",
-                                options[selection],
-                                selection + 1,
-                                options.len()
-                            );
-                            (
-                                text,
-                                if initial_load {
-                                    format!("Speech Verbosity Menu. {}", spoken)
-                                } else {
-                                    spoken
-                                },
-                            )
-                        }
-                        AppScreen::HowToPlay { scroll_line } => {
-                            let lines = get_how_to_play_lines();
-                            let mut text = String::new();
-                            for (i, line) in lines.iter().enumerate() {
-                                if i == scroll_line {
-                                    text.push_str(&format!("-> {}\n", line));
-                                } else {
-                                    text.push_str(&format!("   {}\n", line));
-                                }
-                            }
-                            let line_text = if scroll_line < lines.len() {
-                                lines[scroll_line].clone()
-                            } else {
-                                "".to_string()
-                            };
-                            let spoken = if initial_load {
-                                format!(
-                                    "How to play. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}",
-                                    line_text
-                                )
-                            } else {
-                                line_text
-                            };
-                            (text, spoken)
-                        }
-                        AppScreen::About { scroll_line } => {
-                            let lines = get_about_lines();
-                            let mut text = String::new();
-                            for (i, line) in lines.iter().enumerate() {
-                                if i == scroll_line {
-                                    text.push_str(&format!("-> {}\n", line));
-                                } else {
-                                    text.push_str(&format!("   {}\n", line));
-                                }
-                            }
-                            let line_text = if scroll_line < lines.len() {
-                                lines[scroll_line].clone()
-                            } else {
-                                "".to_string()
-                            };
-                            let spoken = if initial_load {
-                                format!(
-                                    "About Audio Tetris. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}",
-                                    line_text
-                                )
-                            } else {
-                                line_text
-                            };
-                            (text, spoken)
-                        }
-                        AppScreen::InGame => {
-                            let gs = game_state.lock().unwrap();
-                            let text = format!(
-                                "In Game\nLevel: {}\nScore: {}\nLines: {}\n\nPress Escape to pause game.",
-                                gs.level, gs.score, gs.total_lines
-                            );
-                            (text, "".to_string())
-                        }
-                        AppScreen::KeyDescriber { .. } => ("".to_string(), "".to_string()),
-                    };
-                    text_display.set_label(&display_text);
-                    if speak && !spoken_text.is_empty() {
-                        tolk.speak(spoken_text, true);
-                    }
-                };
-
                 let current_screen = *screen_state.lock().unwrap();
                 let mut screen_changed = false;
                 let mut is_initial_load = false;
 
-                // Handle global music track skipping
+                // Global Music Controls
                 if action == InputAction::NextTrack {
                     let track = audio_engine.next_track();
                     tolk.output(format!("Playing {}", track), true);
@@ -486,27 +263,17 @@ impl AppFrame {
                     return;
                 }
 
-                // Handle global START button logic for Quick Settings / Pause / Resume
+                // Global START button logic for Quick Settings / Pause / Resume
                 if action == InputAction::Start {
                     if current_screen == AppScreen::InGame {
                         audio_engine.play_menu_select();
-                        tolk.output("Game Paused. Settings.", true);
-                        *screen_state.lock().unwrap() = AppScreen::Settings { selection: 0 };
+                        tolk.output("Game Paused", true);
+                        *screen_state.lock().unwrap() = AppScreen::PauseMenu { selection: 0 };
                         screen_changed = true;
-                    } else if let AppScreen::Settings { .. } = current_screen {
-                        if *game_in_progress.lock().unwrap() {
-                            audio_engine.play_menu_select();
-                            tolk.output("Game Resumed", true);
-                            let _gs = game_state.lock().unwrap();
-                            *screen_state.lock().unwrap() = AppScreen::InGame;
-                        } else {
-                            audio_engine.play_menu_select();
-                            *screen_state.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
-                        }
-                        screen_changed = true;
-                    } else {
+                    } else if let AppScreen::PauseMenu { .. } = current_screen {
                         audio_engine.play_menu_select();
-                        *screen_state.lock().unwrap() = AppScreen::Settings { selection: 0 };
+                        tolk.output("Game Resumed", true);
+                        *screen_state.lock().unwrap() = AppScreen::InGame;
                         screen_changed = true;
                     }
                     if screen_changed {
@@ -516,64 +283,362 @@ impl AppFrame {
                 }
 
                 match current_screen {
-                    AppScreen::MainMenu { selection } => match action {
+                    AppScreen::MainMenu { selection } => {
+                        let in_prog = *game_in_progress.lock().unwrap();
+                        let options_count = main_menu::get_main_menu_options(in_prog).len();
+
+                        match action {
+                            InputAction::Up => {
+                                let new_sel = if selection > 0 {
+                                    selection - 1
+                                } else {
+                                    options_count - 1
+                                };
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::MainMenu { selection: new_sel };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Down => {
+                                let new_sel = if selection < options_count - 1 {
+                                    selection + 1
+                                } else {
+                                    0
+                                };
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::MainMenu { selection: new_sel };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Select => {
+                                audio_engine.play_menu_select();
+                                if in_prog {
+                                    match selection {
+                                        0 => {
+                                            tolk.output("Game Resumed", true);
+                                            *screen_state.lock().unwrap() = AppScreen::InGame;
+                                        }
+                                        1 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::ConfirmDialog {
+                                                    action: ConfirmAction::NewGame,
+                                                };
+                                        }
+                                        2 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::LoadScreen { selection: 0 };
+                                        }
+                                        3 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Leaderboard { selection: 0 };
+                                        }
+                                        4 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::HowToPlay { scroll_line: 0 };
+                                            is_initial_load = true;
+                                        }
+                                        5 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Settings { selection: 0 };
+                                        }
+                                        6 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::About { scroll_line: 0 };
+                                            is_initial_load = true;
+                                        }
+                                        7 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::ConfirmDialog {
+                                                    action: ConfirmAction::QuitApp,
+                                                };
+                                        }
+                                        _ => {}
+                                    }
+                                } else {
+                                    match selection {
+                                        0 => {
+                                            let diff = settings.lock().unwrap().difficulty;
+                                            let mut gs = game_state.lock().unwrap();
+                                            *gs = GameState::new(diff);
+                                            tolk.output("New Game Started!", true);
+                                            audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                                            *game_in_progress.lock().unwrap() = true;
+                                            *screen_state.lock().unwrap() = AppScreen::InGame;
+                                        }
+                                        1 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::LoadScreen { selection: 0 };
+                                        }
+                                        2 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Leaderboard { selection: 0 };
+                                        }
+                                        3 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::HowToPlay { scroll_line: 0 };
+                                            is_initial_load = true;
+                                        }
+                                        4 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Settings { selection: 0 };
+                                        }
+                                        5 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::About { scroll_line: 0 };
+                                            is_initial_load = true;
+                                        }
+                                        6 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::ConfirmDialog {
+                                                    action: ConfirmAction::QuitApp,
+                                                };
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                screen_changed = true;
+                            }
+                            InputAction::HelpMode => {
+                                audio_engine.play_menu_select();
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::KeyDescriber { esc_count: 0 };
+                                tolk.output("Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit.", true);
+                                screen_changed = true;
+                            }
+                            InputAction::Back => {
+                                audio_engine.play_menu_select();
+                                if in_prog {
+                                    tolk.output("Game Resumed", true);
+                                    *screen_state.lock().unwrap() = AppScreen::InGame;
+                                } else {
+                                    *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
+                                        action: ConfirmAction::QuitApp,
+                                    };
+                                }
+                                screen_changed = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                    AppScreen::PauseMenu { selection } => {
+                        let options_count = pause_menu::get_pause_menu_options().len();
+                        match action {
+                            InputAction::Up => {
+                                let new_sel = if selection > 0 {
+                                    selection - 1
+                                } else {
+                                    options_count - 1
+                                };
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::PauseMenu { selection: new_sel };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Down => {
+                                let new_sel = if selection < options_count - 1 {
+                                    selection + 1
+                                } else {
+                                    0
+                                };
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::PauseMenu { selection: new_sel };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Select => {
+                                audio_engine.play_menu_select();
+                                match selection {
+                                    0 => {
+                                        tolk.output("Game Resumed", true);
+                                        *screen_state.lock().unwrap() = AppScreen::InGame;
+                                    }
+                                    1 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::SaveScreen { selection: 0 };
+                                    }
+                                    2 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::LoadScreen { selection: 0 };
+                                    }
+                                    3 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::Settings { selection: 0 };
+                                    }
+                                    4 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::HowToPlay { scroll_line: 0 };
+                                        is_initial_load = true;
+                                    }
+                                    5 => {
+                                        *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
+                                            action: ConfirmAction::AbandonGame,
+                                        };
+                                    }
+                                    6 => {
+                                        *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
+                                            action: ConfirmAction::QuitApp,
+                                        };
+                                    }
+                                    _ => {}
+                                }
+                                screen_changed = true;
+                            }
+                            InputAction::Back => {
+                                audio_engine.play_menu_select();
+                                tolk.output("Game Resumed", true);
+                                *screen_state.lock().unwrap() = AppScreen::InGame;
+                                screen_changed = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                    AppScreen::SaveScreen { selection } => match action {
                         InputAction::Up => {
-                            let new_sel = if selection > 0 { selection - 1 } else { 4 };
+                            let new_sel = if selection > 0 { selection - 1 } else { 5 };
                             *screen_state.lock().unwrap() =
-                                AppScreen::MainMenu { selection: new_sel };
+                                AppScreen::SaveScreen { selection: new_sel };
                             audio_engine.play_menu_move();
                             screen_changed = true;
                         }
                         InputAction::Down => {
-                            let new_sel = if selection < 4 { selection + 1 } else { 0 };
+                            let new_sel = if selection < 5 { selection + 1 } else { 0 };
                             *screen_state.lock().unwrap() =
-                                AppScreen::MainMenu { selection: new_sel };
+                                AppScreen::SaveScreen { selection: new_sel };
                             audio_engine.play_menu_move();
                             screen_changed = true;
                         }
                         InputAction::Select => {
                             audio_engine.play_menu_select();
-                            if selection == 0 {
-                                let mut gs = game_state.lock().unwrap();
-                                let mut in_prog = game_in_progress.lock().unwrap();
-                                if !*in_prog {
-                                    let diff = settings.lock().unwrap().difficulty;
-                                    *gs = GameState::new(diff);
-                                    tolk.output("New Game Started!", true);
-                                    audio_engine.play_spawn_sound(gs.current_piece.t_type);
-                                    *in_prog = true;
+                            if selection < 5 {
+                                let slot_id = selection + 1;
+                                let gs = game_state.lock().unwrap();
+                                if let Err(e) = db.save_slot(slot_id, &gs) {
+                                    tolk.output(format!("Failed to save game: {}", e), true);
                                 } else {
-                                    tolk.output("Game Resumed", true);
+                                    tolk.output(format!("Game Saved to Slot {}", slot_id), true);
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::PauseMenu { selection: 1 };
                                 }
-                                *screen_state.lock().unwrap() = AppScreen::InGame;
-                            } else if selection == 1 {
+                            } else {
                                 *screen_state.lock().unwrap() =
-                                    AppScreen::HowToPlay { scroll_line: 0 };
-                                is_initial_load = true;
-                            } else if selection == 2 {
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::Settings { selection: 0 };
-                            } else if selection == 3 {
-                                *screen_state.lock().unwrap() = AppScreen::About { scroll_line: 0 };
-                                is_initial_load = true;
-                            } else if selection == 4 {
-                                frame.close(true);
-                                return;
+                                    AppScreen::PauseMenu { selection: 1 };
                             }
                             screen_changed = true;
                         }
-                        InputAction::HelpMode => {
-                            audio_engine.play_menu_select();
-                            *screen_state.lock().unwrap() =
-                                AppScreen::KeyDescriber { esc_count: 0 };
-                            tolk.output("Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit.", true);
-                            screen_changed = true;
-                        }
                         InputAction::Back => {
-                            frame.close(true);
+                            audio_engine.play_menu_select();
+                            *screen_state.lock().unwrap() = AppScreen::PauseMenu { selection: 1 };
+                            screen_changed = true;
                         }
                         _ => {}
                     },
+                    AppScreen::LoadScreen { selection } => match action {
+                        InputAction::Up => {
+                            let new_sel = if selection > 0 { selection - 1 } else { 5 };
+                            *screen_state.lock().unwrap() =
+                                AppScreen::LoadScreen { selection: new_sel };
+                            audio_engine.play_menu_move();
+                            screen_changed = true;
+                        }
+                        InputAction::Down => {
+                            let new_sel = if selection < 5 { selection + 1 } else { 0 };
+                            *screen_state.lock().unwrap() =
+                                AppScreen::LoadScreen { selection: new_sel };
+                            audio_engine.play_menu_move();
+                            screen_changed = true;
+                        }
+                        InputAction::Select => {
+                            audio_engine.play_menu_select();
+                            if selection < 5 {
+                                let slot_id = selection + 1;
+                                match db.load_slot(slot_id) {
+                                    Ok(loaded_gs) => {
+                                        let mut gs = game_state.lock().unwrap();
+                                        *gs = loaded_gs;
+                                        *game_in_progress.lock().unwrap() = true;
+                                        tolk.output(
+                                            format!("Game Loaded from Slot {}", slot_id),
+                                            true,
+                                        );
+                                        audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                                        *screen_state.lock().unwrap() = AppScreen::InGame;
+                                    }
+                                    Err(_) => {
+                                        audio_engine.play_hold_denied_sound();
+                                        tolk.output(format!("Slot {} is Empty", slot_id), true);
+                                    }
+                                }
+                            } else {
+                                let in_prog = *game_in_progress.lock().unwrap();
+                                if in_prog {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::PauseMenu { selection: 2 };
+                                } else {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 1 };
+                                }
+                            }
+                            screen_changed = true;
+                        }
+                        InputAction::Back => {
+                            audio_engine.play_menu_select();
+                            let in_prog = *game_in_progress.lock().unwrap();
+                            if in_prog {
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::PauseMenu { selection: 2 };
+                            } else {
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::MainMenu { selection: 1 };
+                            }
+                            screen_changed = true;
+                        }
+                        _ => {}
+                    },
+                    AppScreen::Leaderboard { selection } => {
+                        let scores = db.get_high_scores(10);
+                        let items_count = if scores.is_empty() {
+                            2
+                        } else {
+                            scores.len() + 2
+                        };
+                        match action {
+                            InputAction::Up => {
+                                let new_sel = if selection > 0 {
+                                    selection - 1
+                                } else {
+                                    items_count - 1
+                                };
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::Leaderboard { selection: new_sel };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Down => {
+                                let new_sel = if selection < items_count - 1 {
+                                    selection + 1
+                                } else {
+                                    0
+                                };
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::Leaderboard { selection: new_sel };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Select | InputAction::Back => {
+                                audio_engine.play_menu_select();
+                                let in_prog = *game_in_progress.lock().unwrap();
+                                if in_prog {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::PauseMenu { selection: 0 };
+                                } else {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 3 };
+                                }
+                                screen_changed = true;
+                            }
+                            _ => {}
+                        }
+                    }
                     AppScreen::Settings { selection } => match action {
                         InputAction::Up => {
                             let new_sel = if selection > 0 { selection - 1 } else { 6 };
@@ -593,21 +658,16 @@ impl AppFrame {
                             let mut s = settings.lock().unwrap();
                             if selection == 0 {
                                 s.difficulty = match s.difficulty {
-                                    Difficulty::Difficult => Difficulty::Moderate,
+                                    Difficulty::Easy => Difficulty::Difficult,
                                     Difficulty::Moderate => Difficulty::Easy,
-                                    Difficulty::Easy => Difficulty::Easy,
+                                    Difficulty::Difficult => Difficulty::Moderate,
                                 };
-                            } else if selection == 1 {
-                                audio_engine.play_menu_select();
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::SpeechVerbosity { selection: 0 };
+                                audio_engine.play_menu_move();
+                                tolk.speak(format!("Difficulty {}", s.difficulty.as_str()), true);
                             } else if selection == 2 {
                                 s.voice_volume = (s.voice_volume - 0.05).max(0.0);
                                 tolk.speak(
-                                    format!(
-                                        "Voice Cues Volume {}%",
-                                        (s.voice_volume * 100.0) as i32
-                                    ),
+                                    format!("Voice Volume {}%", (s.voice_volume * 100.0) as i32),
                                     true,
                                 );
                             } else if selection == 3 {
@@ -637,14 +697,14 @@ impl AppFrame {
                                 if !s.bgm_enabled && s.bgm_volume > 0.0 {
                                     s.bgm_enabled = true;
                                     audio_engine.set_bgm_enabled(true);
-                                    tolk.speak(
-                                        format!(
-                                            "Background Music On. Volume {}%",
-                                            (s.bgm_volume * 100.0) as i32
-                                        ),
-                                        true,
-                                    );
                                 }
+                                tolk.speak(
+                                    format!(
+                                        "Background Music Volume {}%",
+                                        (s.bgm_volume * 100.0) as i32
+                                    ),
+                                    true,
+                                );
                             }
                             s.save();
                             screen_changed = true;
@@ -655,19 +715,14 @@ impl AppFrame {
                                 s.difficulty = match s.difficulty {
                                     Difficulty::Easy => Difficulty::Moderate,
                                     Difficulty::Moderate => Difficulty::Difficult,
-                                    Difficulty::Difficult => Difficulty::Difficult,
+                                    Difficulty::Difficult => Difficulty::Easy,
                                 };
-                            } else if selection == 1 {
-                                audio_engine.play_menu_select();
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::SpeechVerbosity { selection: 0 };
+                                audio_engine.play_menu_move();
+                                tolk.speak(format!("Difficulty {}", s.difficulty.as_str()), true);
                             } else if selection == 2 {
                                 s.voice_volume = (s.voice_volume + 0.05).min(1.0);
                                 tolk.speak(
-                                    format!(
-                                        "Voice Cues Volume {}%",
-                                        (s.voice_volume * 100.0) as i32
-                                    ),
+                                    format!("Voice Volume {}%", (s.voice_volume * 100.0) as i32),
                                     true,
                                 );
                             } else if selection == 3 {
@@ -697,14 +752,14 @@ impl AppFrame {
                                 if !s.bgm_enabled && s.bgm_volume > 0.0 {
                                     s.bgm_enabled = true;
                                     audio_engine.set_bgm_enabled(true);
-                                    tolk.speak(
-                                        format!(
-                                            "Background Music On. Volume {}%",
-                                            (s.bgm_volume * 100.0) as i32
-                                        ),
-                                        true,
-                                    );
                                 }
+                                tolk.speak(
+                                    format!(
+                                        "Background Music Volume {}%",
+                                        (s.bgm_volume * 100.0) as i32
+                                    ),
+                                    true,
+                                );
                             }
                             s.save();
                             screen_changed = true;
@@ -715,30 +770,16 @@ impl AppFrame {
                                 *screen_state.lock().unwrap() =
                                     AppScreen::SpeechVerbosity { selection: 0 };
                                 screen_changed = true;
-                            } else if selection == 4 && action == InputAction::Select {
-                                let mut s = settings.lock().unwrap();
-                                s.bgm_enabled = !s.bgm_enabled;
-                                if s.bgm_enabled {
-                                    s.bgm_volume = if s.saved_bgm_volume > 0.0 {
-                                        s.saved_bgm_volume
-                                    } else {
-                                        0.2
-                                    };
-                                    audio_engine.set_bgm_volume(s.bgm_volume);
-                                } else {
-                                    s.saved_bgm_volume = s.bgm_volume;
-                                    s.bgm_volume = 0.0;
-                                    audio_engine.set_bgm_volume(0.0);
-                                }
-                                audio_engine.set_bgm_enabled(s.bgm_enabled);
-                                s.save();
-                                let status = if s.bgm_enabled { "On" } else { "Off" };
-                                tolk.speak(format!("Background Music {}", status), true);
-                                screen_changed = true;
                             } else if selection == 6 || action == InputAction::Back {
                                 audio_engine.play_menu_select();
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::MainMenu { selection: 2 };
+                                let in_prog = *game_in_progress.lock().unwrap();
+                                if in_prog {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::PauseMenu { selection: 3 };
+                                } else {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 5 };
+                                }
                                 screen_changed = true;
                             }
                         }
@@ -797,13 +838,14 @@ impl AppFrame {
                         _ => {}
                     },
                     AppScreen::HowToPlay { scroll_line } => {
-                        let lines_count = get_how_to_play_lines().len();
+                        let lines_count = how_to_play::get_how_to_play_lines().len();
                         match action {
                             InputAction::Up => {
                                 if scroll_line > 0 {
                                     *screen_state.lock().unwrap() = AppScreen::HowToPlay {
                                         scroll_line: scroll_line - 1,
                                     };
+                                    audio_engine.play_menu_move();
                                     screen_changed = true;
                                 }
                             }
@@ -812,30 +854,39 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() = AppScreen::HowToPlay {
                                         scroll_line: scroll_line + 1,
                                     };
+                                    audio_engine.play_menu_move();
                                     screen_changed = true;
                                 }
                             }
                             InputAction::Select => {
-                                let lines = get_how_to_play_lines();
-                                tolk.output(lines.join(" "), true);
+                                audio_engine.play_menu_select();
+                                let full_text = how_to_play::get_how_to_play_lines().join(" ");
+                                tolk.speak(full_text, true);
                             }
                             InputAction::Back => {
                                 audio_engine.play_menu_select();
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::MainMenu { selection: 1 };
+                                let in_prog = *game_in_progress.lock().unwrap();
+                                if in_prog {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::PauseMenu { selection: 4 };
+                                } else {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 4 };
+                                }
                                 screen_changed = true;
                             }
                             _ => {}
                         }
                     }
                     AppScreen::About { scroll_line } => {
-                        let lines_count = get_about_lines().len();
+                        let lines_count = about_screen::get_about_lines().len();
                         match action {
                             InputAction::Up => {
                                 if scroll_line > 0 {
                                     *screen_state.lock().unwrap() = AppScreen::About {
                                         scroll_line: scroll_line - 1,
                                     };
+                                    audio_engine.play_menu_move();
                                     screen_changed = true;
                                 }
                             }
@@ -844,22 +895,72 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() = AppScreen::About {
                                         scroll_line: scroll_line + 1,
                                     };
+                                    audio_engine.play_menu_move();
                                     screen_changed = true;
                                 }
                             }
                             InputAction::Select => {
-                                let lines = get_about_lines();
-                                tolk.output(lines.join(" "), true);
+                                audio_engine.play_menu_select();
+                                let full_text = about_screen::get_about_lines().join(" ");
+                                tolk.speak(full_text, true);
                             }
                             InputAction::Back => {
                                 audio_engine.play_menu_select();
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::MainMenu { selection: 3 };
+                                let in_prog = *game_in_progress.lock().unwrap();
+                                if in_prog {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::PauseMenu { selection: 4 };
+                                } else {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 6 };
+                                }
                                 screen_changed = true;
                             }
                             _ => {}
                         }
                     }
+                    AppScreen::ConfirmDialog {
+                        action: confirm_act,
+                    } => match action {
+                        InputAction::Select => {
+                            audio_engine.play_menu_select();
+                            match confirm_act {
+                                ConfirmAction::NewGame => {
+                                    let diff = settings.lock().unwrap().difficulty;
+                                    let mut gs = game_state.lock().unwrap();
+                                    *gs = GameState::new(diff);
+                                    tolk.output("New Game Started!", true);
+                                    audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                                    *game_in_progress.lock().unwrap() = true;
+                                    *screen_state.lock().unwrap() = AppScreen::InGame;
+                                }
+                                ConfirmAction::AbandonGame => {
+                                    *game_in_progress.lock().unwrap() = false;
+                                    tolk.output("Game Abandoned", true);
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 0 };
+                                }
+                                ConfirmAction::QuitApp => {
+                                    frame.close(true);
+                                    return;
+                                }
+                            }
+                            screen_changed = true;
+                        }
+                        InputAction::Back => {
+                            audio_engine.play_menu_select();
+                            let in_prog = *game_in_progress.lock().unwrap();
+                            if in_prog {
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::PauseMenu { selection: 0 };
+                            } else {
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::MainMenu { selection: 0 };
+                            }
+                            screen_changed = true;
+                        }
+                        _ => {}
+                    },
                     AppScreen::InGame => {
                         let mut gs = game_state.lock().unwrap();
 
@@ -867,145 +968,88 @@ impl AppFrame {
                             InputAction::Back => {
                                 tolk.output("Game Paused", true);
                                 *screen_state.lock().unwrap() =
-                                    AppScreen::MainMenu { selection: 0 };
+                                    AppScreen::PauseMenu { selection: 0 };
                                 screen_changed = true;
                             }
                             InputAction::Radar => {
                                 audio_engine.play_radar_sweep(gs.get_topography());
                             }
                             InputAction::Left => {
-                                if gs.move_piece(-1, 0) {
+                                if gs.move_left() {
                                     audio_engine.play_horizontal_move_sound(gs.current_piece.x);
-                                    if gs.is_perfect_fit() {
+                                    if gs.current_piece.x == 0 || gs.current_piece.x == 9 {
                                         audio_engine.play_aligned_sound();
                                     }
-                                    tolk.speak(
-                                        format!("Left, column {}", gs.current_piece.left_column()),
-                                        true,
-                                    );
+                                } else {
+                                    audio_engine.play_aligned_sound();
                                 }
                             }
                             InputAction::Right => {
-                                if gs.move_piece(1, 0) {
+                                if gs.move_right() {
                                     audio_engine.play_horizontal_move_sound(gs.current_piece.x);
-                                    if gs.is_perfect_fit() {
+                                    if gs.current_piece.x == 0 || gs.current_piece.x == 9 {
                                         audio_engine.play_aligned_sound();
                                     }
-                                    tolk.speak(
-                                        format!("Right, column {}", gs.current_piece.left_column()),
-                                        true,
-                                    );
+                                } else {
+                                    audio_engine.play_aligned_sound();
                                 }
                             }
                             InputAction::RotateRight => {
-                                if gs.rotate_piece() {
+                                if gs.rotate_cw() {
                                     audio_engine.play_rotate_cw_sound(gs.current_piece.y);
-                                    if gs.is_perfect_fit() {
-                                        audio_engine.play_aligned_sound();
-                                    }
-                                    let w = gs.current_piece.width();
-                                    let l = gs.current_piece.left_column();
-                                    let r = gs.current_piece.right_column();
-                                    let span_str = if w == 1 {
-                                        format!("Column {}", l)
-                                    } else {
-                                        format!("Columns {} through {}", l, r)
-                                    };
-                                    tolk.speak(
-                                        format!(
-                                            "Rotated Right, {} {} wide, {}",
-                                            w,
-                                            if w == 1 { "column" } else { "columns" },
-                                            span_str
-                                        ),
-                                        true,
-                                    );
+                                } else {
+                                    audio_engine.play_aligned_sound();
                                 }
                             }
                             InputAction::RotateLeft => {
-                                if gs.rotate_piece_ccw() {
+                                if gs.rotate_ccw() {
                                     audio_engine.play_rotate_ccw_sound(gs.current_piece.y);
-                                    if gs.is_perfect_fit() {
-                                        audio_engine.play_aligned_sound();
-                                    }
-                                    let w = gs.current_piece.width();
-                                    let l = gs.current_piece.left_column();
-                                    let r = gs.current_piece.right_column();
-                                    let span_str = if w == 1 {
-                                        format!("Column {}", l)
-                                    } else {
-                                        format!("Columns {} through {}", l, r)
-                                    };
-                                    tolk.speak(
-                                        format!(
-                                            "Rotated Left, {} {} wide, {}",
-                                            w,
-                                            if w == 1 { "column" } else { "columns" },
-                                            span_str
-                                        ),
-                                        true,
-                                    );
+                                } else {
+                                    audio_engine.play_aligned_sound();
                                 }
                             }
                             InputAction::PieceInfo => {
-                                let p_name = gs
-                                    .current_piece
-                                    .t_type
-                                    .as_str(settings.lock().unwrap().piece_callouts_technical);
-                                let w = gs.current_piece.width();
-                                let l = gs.current_piece.left_column();
-                                let r = gs.current_piece.right_column();
-                                let y = gs.current_piece.y;
-                                let span_str = if w == 1 {
-                                    format!("Column {}", l)
-                                } else {
-                                    format!("Columns {} through {}", l, r)
-                                };
-                                tolk.speak(
-                                    format!(
-                                        "{}, {} {} wide, {}, row {}",
-                                        p_name,
-                                        w,
-                                        if w == 1 { "column" } else { "columns" },
-                                        span_str,
-                                        y
-                                    ),
-                                    true,
+                                let callout_tech =
+                                    settings.lock().unwrap().piece_callouts_technical;
+                                let name = gs.current_piece.t_type.as_str(callout_tech);
+                                let left = gs.current_piece.left_column();
+                                let right = gs.current_piece.right_column();
+                                let width = gs.current_piece.width();
+                                let mut text = format!(
+                                    "Current piece: {}. Columns {} through {}. Width: {}.",
+                                    name, left, right, width
                                 );
+                                if let Some(held) = gs.hold_piece {
+                                    text.push_str(&format!(
+                                        " Held piece: {}.",
+                                        held.as_str(callout_tech)
+                                    ));
+                                } else {
+                                    text.push_str(" Held piece: None.");
+                                }
+                                tolk.output(text, true);
                             }
                             InputAction::Hold => {
-                                if let Some((is_swap, held, new_p)) = gs.hold() {
-                                    if is_swap {
+                                if let Some((swapped, _prev, _new)) = gs.hold() {
+                                    if swapped {
                                         audio_engine.play_hold_swap_sound();
                                     } else {
                                         audio_engine.play_hold_sound();
                                     }
-                                    tolk.speak(
-                                        format!("Held {:?}. New piece: {:?}", held, new_p),
-                                        true,
-                                    );
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                 } else {
                                     audio_engine.play_hold_denied_sound();
-                                    tolk.speak("Already held this turn", true);
                                 }
                             }
-                            InputAction::Select => {
-                                // A Button is freed up in-game, does nothing.
-                            }
+                            InputAction::Select => {}
                             InputAction::Down => {
-                                if gs.move_piece(0, 1) {
+                                if gs.soft_drop() {
                                     audio_engine.play_soft_drop_sound(gs.current_piece.y);
-                                    if gs.is_perfect_fit() {
-                                        audio_engine.play_aligned_sound();
-                                    }
-                                    tolk.speak(format!("Down, row {}", gs.current_piece.y), true);
                                 }
                             }
                             InputAction::HardDrop => {
-                                while gs.move_piece(0, 1) {}
                                 audio_engine.play_hard_drop_sound();
-                                let res = gs.lock_piece();
+                                let res = gs.hard_drop();
                                 let settings_lock = settings.lock().unwrap();
                                 let scoring_advanced = settings_lock.scoring_details_advanced;
                                 let zone_alerts = settings_lock.zone_alerts;
@@ -1052,6 +1096,7 @@ impl AppFrame {
                                 }
 
                                 if gs.is_game_over {
+                                    let _ = db.record_high_score(&gs);
                                     *game_in_progress.lock().unwrap() = false;
                                     tolk.output(
                                         format!("Game Over! Final Score: {}", gs.score),
@@ -1116,6 +1161,7 @@ impl AppFrame {
             let screen = screen_state.clone();
             let in_prog = game_in_progress.clone();
             let settings = settings.clone();
+            let db = db.clone();
 
             move |_| {
                 let interval = 16;
@@ -1191,6 +1237,7 @@ impl AppFrame {
                         }
 
                         if gs.is_game_over {
+                            let _ = db.record_high_score(&gs);
                             *in_prog.lock().unwrap() = false;
                             tolk.output(format!("Game Over! Final Score: {}", gs.score), true);
                             *screen.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
@@ -1205,166 +1252,66 @@ impl AppFrame {
                                 tolk.output(format!("{} spawned!", spawned.as_str()), false);
                             }
                         }
+                        render_in_closure(true, false);
                     }
-                    return; // exit early for lock delay ticks
-                }
-
-                // Normal fall logic
-                gs.fall_timer_ms += interval;
-                if gs.fall_timer_ms >= gs.current_speed_ms() {
-                    gs.fall_timer_ms = 0;
-
-                    if !gs.is_in_zone {
-                        if gs.can_move_down() {
-                            gs.move_piece(0, 1);
-                            audio_engine.play_soft_drop_sound(gs.current_piece.y);
-                        } else {
+                } else {
+                    gs.fall_timer_ms += interval;
+                    let speed = gs.current_speed_ms();
+                    if gs.fall_timer_ms >= speed {
+                        gs.fall_timer_ms = 0;
+                        if !gs.move_down() {
                             gs.lock_delay_active = true;
                             gs.lock_delay_timer_ms = 500;
-                            gs.moves_since_lock_delay = 0;
-                            audio_engine.play_lock_delay_warning();
-                        }
-                    } else {
-                        if !gs.can_move_down() {
-                            gs.lock_delay_active = true;
-                            gs.lock_delay_timer_ms = 500;
-                            gs.moves_since_lock_delay = 0;
-                            audio_engine.play_lock_delay_warning();
                         }
                     }
-                    // Check danger state based on max column height
-                    let max_h = gs.get_topography().iter().copied().max().unwrap_or(0);
-                    audio_engine.update_danger_state(max_h);
-                }
-            }
-        });
-        // 3. KEYBOARD INPUT EVENT BINDING
-        self.panel.on_key_down({
-            let shared_logic = shared_logic.clone();
-            let screen_state = screen_state.clone();
-            let tolk = tolk_instance.clone();
-            let audio_engine = audio_engine.clone();
-            move |evt| {
-                let keycode = match evt {
-                    wxdragon::event::window_events::WindowEventData::Keyboard(ref kbd_event) => {
-                        kbd_event.get_key_code().unwrap_or(0)
-                    }
-                    _ => 0,
-                };
-
-                // --- KEYBOARD HELP MODE INTERCEPT ---
-                let current_screen_val = *screen_state.lock().unwrap();
-                if let AppScreen::KeyDescriber { esc_count } = current_screen_val {
-                    if keycode == 27 {
-                        // Escape
-                        let new_count = esc_count + 1;
-                        if new_count >= 2 {
-                            audio_engine.play_menu_select();
-                            tolk.output("Exiting Keyboard Help Mode.", true);
-                            *screen_state.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
-                        } else {
-                            *screen_state.lock().unwrap() = AppScreen::KeyDescriber {
-                                esc_count: new_count,
-                            };
-                            tolk.output("Press Escape again to exit Keyboard Help Mode.", true);
-                        }
-                    } else {
-                        // Reset esc count on any other key
-                        if esc_count > 0 {
-                            *screen_state.lock().unwrap() =
-                                AppScreen::KeyDescriber { esc_count: 0 };
-                        }
-                        let desc = match keycode {
-                            315 => "Up Arrow. Hard Drop in game, or Menu Up.",
-                            317 => "Down Arrow. Soft Drop in game, or Menu Down.",
-                            314 => "Left Arrow. Move piece left.",
-                            316 => "Right Arrow. Move piece right.",
-                            87 | 119 => "W. Hard Drop in game, or Menu Up.",
-                            83 | 115 => "S. Soft Drop in game, or Menu Down.",
-                            65 | 97 => "A. Move piece left.",
-                            68 | 100 => "D. Move piece right.",
-                            13 | 370 => "Enter. Apply option or Start game.",
-                            27 => "Escape. Back or Pause.", // won't reach here but for completeness
-                            9 => "Tab. Quick Settings or Pause.",
-                            32 => "Spacebar. Hard Drop.",
-                            67 | 99 => "C. Hold piece.",
-                            47 => "Slash. Hold piece.",
-                            90 | 122 => "Z. Rotate left.",
-                            44 => "Comma. Rotate left.",
-                            88 | 120 => "X. Rotate right.",
-                            46 => "Period. Rotate right.",
-                            69 | 101 | 76 | 108 => "E or L. Radar sweep.",
-                            81 | 113 | 75 | 107 => "Q or K. Activate Zone.",
-                            86 | 118 => "V. Inspect current piece shape and column span.",
-                            59 | 186 => "Semicolon. Inspect current piece shape and column span.",
-                            73 | 105 => "I. Previous music track.",
-                            79 | 111 => "O. Mute or unmute music.",
-                            80 | 112 => "P. Next music track.",
-                            306 | 340 | 344 | 160 | 161 => "Shift. Use Power-up Item.",
-                            72 | 104 => "H. Enter Keyboard Help Mode.",
-                            _ => {
-                                tolk.output(format!("Unmapped key. Code: {}", keycode), true);
-                                return;
-                            }
-                        };
-                        tolk.output(desc, true);
-                    }
-                    return; // Don't process further when in help mode
                 }
 
-                // --- NORMAL KEY PROCESSING ---
-                let action = match keycode {
-                    315 => {
-                        if current_screen_val == AppScreen::InGame {
-                            Some(InputAction::HardDrop)
-                        } else {
-                            Some(InputAction::Up)
-                        }
-                    } // UP Arrow
-                    317 => Some(InputAction::Down),  // DOWN Arrow
-                    314 => Some(InputAction::Left),  // LEFT Arrow
-                    316 => Some(InputAction::Right), // RIGHT Arrow
-                    87 | 119 => {
-                        if current_screen_val == AppScreen::InGame {
-                            Some(InputAction::HardDrop)
-                        } else {
-                            Some(InputAction::Up)
-                        }
-                    } // W
-                    83 | 115 => Some(InputAction::Down), // S
-                    65 | 97 => Some(InputAction::Left), // A
-                    68 | 100 => Some(InputAction::Right), // D
-                    13 | 370 => Some(InputAction::Select), // ENTER
-                    27 => Some(InputAction::Back),   // ESCAPE
-                    9 => Some(InputAction::Start),   // TAB (Quick Settings)
-                    32 => Some(InputAction::HardDrop), // SPACE
-                    67 | 99 | 47 => Some(InputAction::Hold), // C, /
-                    90 | 122 | 44 => Some(InputAction::RotateLeft), // Z, ,
-                    88 | 120 | 46 => Some(InputAction::RotateRight), // X, .
-                    86 | 118 | 59 | 186 => Some(InputAction::PieceInfo), // V, Semicolon
-                    69 | 101 | 76 | 108 => Some(InputAction::Radar), // E, L
-                    81 | 113 | 75 | 107 => Some(InputAction::Zone), // Q, K
-                    73 | 105 => Some(InputAction::PrevTrack), // I
-                    79 | 111 => Some(InputAction::Mute), // O
-                    80 | 112 => Some(InputAction::NextTrack), // P
-                    306 | 340 | 344 | 160 | 161 => Some(InputAction::UseItem), // Left/Right Shift
-                    72 | 104 => Some(InputAction::HelpMode), // H
-                    _ => None,
-                };
-
-                if let Some(act) = action {
-                    shared_logic.borrow_mut()(act);
-                }
+                audio_engine.update_danger_state(gs.max_column_height());
             }
         });
 
-        self.frame.on_close(|evt| {
-            evt.skip(true); // Allow default close action
-        });
-    }
+        // 3. KEYBOARD EVENT BINDINGS
+        let panel_for_events = self.panel;
+        panel_for_events.on_key_down(move |evt| {
+            let key_code = match evt {
+                wxdragon::event::window_events::WindowEventData::Keyboard(ref kbd_event) => {
+                    kbd_event.get_key_code().unwrap_or(0)
+                }
+                _ => 0,
+            };
+            let current_screen_val = *screen_state.lock().unwrap();
+            let action = match key_code {
+                315 | 87 | 119 => {
+                    if current_screen_val == AppScreen::InGame {
+                        Some(InputAction::HardDrop)
+                    } else {
+                        Some(InputAction::Up)
+                    }
+                }
+                317 | 83 | 115 => Some(InputAction::Down), // DOWN Arrow / S
+                314 | 65 | 97 => Some(InputAction::Left),  // LEFT Arrow / A
+                316 | 68 | 100 => Some(InputAction::Right), // RIGHT Arrow / D
+                13 | 370 => Some(InputAction::Select),     // Return / Enter
+                27 => Some(InputAction::Back),             // Escape
+                32 => Some(InputAction::HardDrop),         // Space
+                90 | 122 => Some(InputAction::RotateLeft), // Z key
+                88 | 120 => Some(InputAction::RotateRight), // X key
+                67 | 99 => Some(InputAction::Hold),        // C key
+                82 | 114 => Some(InputAction::Radar),      // R key
+                70 | 102 => Some(InputAction::UseItem),    // F key
+                80 | 112 => Some(InputAction::Start),      // P key
+                306 => Some(InputAction::Zone),            // R-Shift key
+                340 => Some(InputAction::NextTrack),       // F11 key
+                339 => Some(InputAction::PrevTrack),       // F10 key
+                338 => Some(InputAction::Mute),            // F9 key
+                72 | 104 => Some(InputAction::HelpMode),   // H key
+                73 | 105 => Some(InputAction::PieceInfo),  // I key
+                _ => None,
+            };
 
-    pub fn show(&mut self) {
-        self.frame.show(true);
-        self.render_screen(true, true); // Speak the initial main menu
+            if let Some(act) = action {
+                on_action.borrow_mut()(act);
+            }
+        });
     }
 }
