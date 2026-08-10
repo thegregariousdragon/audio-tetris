@@ -5,6 +5,7 @@ use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -52,6 +53,7 @@ pub struct AudioEngine {
     bgm_enabled: Arc<Mutex<bool>>,
     sfx_volume: Arc<Mutex<f32>>,
     bgm_volume_setting: Arc<Mutex<f32>>,
+    track_change_count: Arc<AtomicU64>,
     /// Tracks the last time a danger ping was played (as epoch millis).
     last_danger_ping_ms: Arc<Mutex<u64>>,
     /// Whether danger mode is currently active.
@@ -96,6 +98,7 @@ impl AudioEngine {
         let bgm_enabled = Arc::new(Mutex::new(settings.bgm_enabled));
         let sfx_volume = Arc::new(Mutex::new(settings.sfx_volume));
         let bgm_volume_setting = Arc::new(Mutex::new(settings.bgm_volume));
+        let track_change_count = Arc::new(AtomicU64::new(0));
 
         let engine = Self {
             _stream,
@@ -106,6 +109,7 @@ impl AudioEngine {
             bgm_enabled,
             sfx_volume,
             bgm_volume_setting,
+            track_change_count,
             last_danger_ping_ms: Arc::new(Mutex::new(0)),
             danger_active: Arc::new(Mutex::new(false)),
         };
@@ -135,27 +139,39 @@ impl AudioEngine {
         let track_idx = self.current_track.clone();
         let enabled = self.bgm_enabled.clone();
         let bgm_vol = self.bgm_volume_setting.clone();
+        let track_change_count = self.track_change_count.clone();
 
         thread::spawn(move || {
             loop {
-                let is_empty = { sink.lock().unwrap().empty() };
-                if is_empty && !bgm_tracks.is_empty() {
+                let (is_empty, start_gen, idx) = {
+                    let s = sink.lock().unwrap();
+                    let is_empty = s.empty();
+                    let generation = track_change_count.load(Ordering::SeqCst);
                     let idx = *track_idx.lock().unwrap();
+                    (is_empty, generation, idx)
+                };
+
+                if is_empty && !bgm_tracks.is_empty() {
                     let path = &bgm_tracks[idx % bgm_tracks.len()].0;
                     if let Ok(file) = File::open(path) {
                         let reader = BufReader::new(file);
                         if let Ok(decoder) = Decoder::new(reader) {
-                            let s = sink.lock().unwrap();
-                            s.append(decoder);
-                            if !*enabled.lock().unwrap() {
-                                s.set_volume(0.0);
-                            } else {
-                                s.set_volume(*bgm_vol.lock().unwrap());
+                            let current_gen = track_change_count.load(Ordering::SeqCst);
+                            if current_gen == start_gen {
+                                let s = sink.lock().unwrap();
+                                s.append(decoder);
+                                if !*enabled.lock().unwrap() {
+                                    s.set_volume(0.0);
+                                    s.pause();
+                                } else {
+                                    s.set_volume(*bgm_vol.lock().unwrap());
+                                    s.play();
+                                }
                             }
                         }
                     }
                 }
-                thread::sleep(Duration::from_millis(100));
+                thread::sleep(Duration::from_millis(50));
             }
         });
     }
@@ -166,6 +182,7 @@ impl AudioEngine {
         }
         let mut idx = self.current_track.lock().unwrap();
         *idx = (*idx + 1) % self.bgm_tracks.len();
+        self.track_change_count.fetch_add(1, Ordering::SeqCst);
         self.bgm_sink.lock().unwrap().clear();
 
         let track = &self.bgm_tracks[*idx];
@@ -182,6 +199,7 @@ impl AudioEngine {
         } else {
             *idx -= 1;
         }
+        self.track_change_count.fetch_add(1, Ordering::SeqCst);
         self.bgm_sink.lock().unwrap().clear();
 
         let track = &self.bgm_tracks[*idx];
@@ -194,8 +212,10 @@ impl AudioEngine {
         let s = self.bgm_sink.lock().unwrap();
         if !enabled {
             s.set_volume(0.0);
+            s.pause();
         } else {
             s.set_volume(*self.bgm_volume_setting.lock().unwrap());
+            s.play();
         }
     }
 
@@ -618,13 +638,43 @@ impl AudioEngine {
     }
 
     pub fn toggle_mute(&self) -> bool {
-        let mut is_muted = self.bgm_enabled.lock().unwrap();
-        *is_muted = !*is_muted;
-        if *is_muted {
-            self.bgm_sink.lock().unwrap().play();
+        let mut enabled = self.bgm_enabled.lock().unwrap();
+        *enabled = !*enabled;
+        let is_now_enabled = *enabled;
+        let s = self.bgm_sink.lock().unwrap();
+        if is_now_enabled {
+            s.set_volume(*self.bgm_volume_setting.lock().unwrap());
+            s.play();
         } else {
-            self.bgm_sink.lock().unwrap().pause();
+            s.set_volume(0.0);
+            s.pause();
         }
-        *is_muted
+        !is_now_enabled
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_track_wrapping() {
+        let tracks = [
+            (PathBuf::from("track1.mp3"), "Track 1".to_string()),
+            (PathBuf::from("track2.mp3"), "Track 2".to_string()),
+        ];
+        let len = tracks.len();
+        let mut idx = 0;
+        idx = (idx + 1) % len;
+        assert_eq!(idx, 1);
+        idx = (idx + 1) % len;
+        assert_eq!(idx, 0);
+
+        if idx == 0 {
+            idx = len - 1;
+        } else {
+            idx -= 1;
+        }
+        assert_eq!(idx, 1);
     }
 }
