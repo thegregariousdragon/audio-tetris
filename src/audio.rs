@@ -585,6 +585,7 @@ impl AudioEngine {
     // MENU SOUNDS (unchanged)
     // =======================================================================
 
+    #[allow(dead_code)]
     pub fn play_lock_delay_warning(&self) {
         // A subtle, higher-pitched ticking sound
         self.play_panned_sine(600.0, 30, 0.0, 0.3);

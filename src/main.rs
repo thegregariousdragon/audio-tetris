@@ -1,8 +1,10 @@
 #![windows_subsystem = "windows"]
 
 mod audio;
+mod db;
 mod gui;
 mod logic;
+mod screens;
 mod settings;
 
 use gui::AppFrame;
