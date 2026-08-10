@@ -36,6 +36,30 @@ pub enum InputAction {
     PieceInfo,
 }
 
+pub fn get_action_description(action: InputAction) -> &'static str {
+    match action {
+        InputAction::Left => "Left Arrow or A: Move piece left.",
+        InputAction::Right => "Right Arrow or D: Move piece right.",
+        InputAction::Down => "Down Arrow or S: Soft drop piece.",
+        InputAction::HardDrop => "Space Bar: Hard drop piece instantly.",
+        InputAction::RotateLeft => "Z or Comma: Rotate piece counter-clockwise.",
+        InputAction::RotateRight => "X or Period: Rotate piece clockwise.",
+        InputAction::Hold => "C or Slash: Hold piece.",
+        InputAction::Radar => "E or L Key: Radar sweep for stack heights.",
+        InputAction::Zone => "Q or K Key: Activate Zone mode.",
+        InputAction::UseItem => "F Key or Shift: Use power-up item.",
+        InputAction::PieceInfo => "V or Semicolon Key: Inspect piece shape and column span.",
+        InputAction::PrevTrack => "I Key: Previous background music track.",
+        InputAction::Mute => "O Key: Toggle background music mute.",
+        InputAction::NextTrack => "P Key: Next background music track.",
+        InputAction::Start => "Tab Key: Quick Pause or Resume game.",
+        InputAction::HelpMode => "H Key: Keyboard Help Mode.",
+        InputAction::Up => "Up Arrow or W: Menu selection up.",
+        InputAction::Select => "Enter Key: Select menu option.",
+        InputAction::Back => "Escape Key: Go back or pause game.",
+    }
+}
+
 pub struct AppFrame {
     frame: Frame,
     panel: Panel,
@@ -144,8 +168,7 @@ impl AppFrame {
             AppScreen::KeyDescriber { .. } => (
                 "Keyboard Help Mode\nPress any key to hear its function.\nPress Escape twice to exit."
                     .to_string(),
-                "Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit."
-                    .to_string(),
+                "".to_string(),
             ),
         };
 
@@ -217,7 +240,7 @@ impl AppFrame {
                     }
                     AppScreen::KeyDescriber { .. } => (
                         "Keyboard Help Mode\nPress any key to hear its function.\nPress Escape twice to exit.".to_string(),
-                        "Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit.".to_string(),
+                        "".to_string(),
                     ),
                 };
 
@@ -260,6 +283,18 @@ impl AppFrame {
                     } else {
                         tolk.output("Music Unmuted", true);
                     }
+                    return;
+                }
+
+                // Global Help Mode (H key)
+                if action == InputAction::HelpMode {
+                    audio_engine.play_menu_select();
+                    *screen_state.lock().unwrap() = AppScreen::KeyDescriber { esc_count: 0 };
+                    tolk.output(
+                        "Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit.",
+                        true,
+                    );
+                    render_in_closure(true, false);
                     return;
                 }
 
@@ -1225,7 +1260,35 @@ impl AppFrame {
                             _ => {}
                         }
                     }
-                    AppScreen::KeyDescriber { .. } => {}
+                    AppScreen::KeyDescriber { esc_count } => {
+                        if action == InputAction::Back {
+                            if esc_count == 0 {
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::KeyDescriber { esc_count: 1 };
+                                audio_engine.play_menu_move();
+                                tolk.output("Press Escape again to exit Keyboard Help Mode.", true);
+                            } else {
+                                audio_engine.play_menu_select();
+                                let in_prog = *game_in_progress.lock().unwrap();
+                                if in_prog {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::PauseMenu { selection: 0 };
+                                    tolk.output("Exited Keyboard Help Mode.", true);
+                                } else {
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 0 };
+                                    tolk.output("Exited Keyboard Help Mode.", true);
+                                }
+                            }
+                        } else {
+                            *screen_state.lock().unwrap() =
+                                AppScreen::KeyDescriber { esc_count: 0 };
+                            audio_engine.play_menu_move();
+                            let desc = get_action_description(action);
+                            tolk.output(desc, true);
+                        }
+                        screen_changed = true;
+                    }
                 }
 
                 if screen_changed {
