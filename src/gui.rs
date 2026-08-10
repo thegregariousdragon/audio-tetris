@@ -326,27 +326,31 @@ impl AppFrame {
                                         }
                                         2 => {
                                             *screen_state.lock().unwrap() =
-                                                AppScreen::LoadScreen { selection: 0 };
+                                                AppScreen::SaveScreen { selection: 0 };
                                         }
                                         3 => {
                                             *screen_state.lock().unwrap() =
-                                                AppScreen::Leaderboard { selection: 0 };
+                                                AppScreen::LoadScreen { selection: 0 };
                                         }
                                         4 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Leaderboard { selection: 0 };
+                                        }
+                                        5 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::HowToPlay { scroll_line: 0 };
                                             is_initial_load = true;
                                         }
-                                        5 => {
+                                        6 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::Settings { selection: 0 };
                                         }
-                                        6 => {
+                                        7 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::About { scroll_line: 0 };
                                             is_initial_load = true;
                                         }
-                                        7 => {
+                                        8 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::ConfirmDialog {
                                                     action: ConfirmAction::QuitApp,
@@ -361,6 +365,15 @@ impl AppFrame {
                                             let mut gs = game_state.lock().unwrap();
                                             *gs = GameState::new(diff);
                                             tolk.output("New Game Started!", true);
+                                            let callout_tech =
+                                                settings.lock().unwrap().piece_callouts_technical;
+                                            tolk.output(
+                                                format!(
+                                                    "{} spawned",
+                                                    gs.current_piece.t_type.as_str(callout_tech)
+                                                ),
+                                                false,
+                                            );
                                             audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                             *game_in_progress.lock().unwrap() = true;
                                             *screen_state.lock().unwrap() = AppScreen::InGame;
@@ -410,12 +423,8 @@ impl AppFrame {
                                 if in_prog {
                                     tolk.output("Game Resumed", true);
                                     *screen_state.lock().unwrap() = AppScreen::InGame;
-                                } else {
-                                    *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
-                                        action: ConfirmAction::QuitApp,
-                                    };
+                                    screen_changed = true;
                                 }
-                                screen_changed = true;
                             }
                             _ => {}
                         }
@@ -462,7 +471,7 @@ impl AppFrame {
                                     }
                                     3 => {
                                         *screen_state.lock().unwrap() =
-                                            AppScreen::Settings { selection: 0 };
+                                            AppScreen::Leaderboard { selection: 0 };
                                     }
                                     4 => {
                                         *screen_state.lock().unwrap() =
@@ -470,11 +479,20 @@ impl AppFrame {
                                         is_initial_load = true;
                                     }
                                     5 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::Settings { selection: 0 };
+                                    }
+                                    6 => {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::About { scroll_line: 0 };
+                                        is_initial_load = true;
+                                    }
+                                    7 => {
                                         *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
                                             action: ConfirmAction::AbandonGame,
                                         };
                                     }
-                                    6 => {
+                                    8 => {
                                         *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
                                             action: ConfirmAction::QuitApp,
                                         };
@@ -596,11 +614,8 @@ impl AppFrame {
                     },
                     AppScreen::Leaderboard { selection } => {
                         let scores = db.get_high_scores(10);
-                        let items_count = if scores.is_empty() {
-                            2
-                        } else {
-                            scores.len() + 2
-                        };
+                        let stats = db.get_player_stats();
+                        let items_count = leaderboard::get_leaderboard_items_count(&scores);
                         match action {
                             InputAction::Up => {
                                 let new_sel = if selection > 0 {
@@ -624,15 +639,33 @@ impl AppFrame {
                                 audio_engine.play_menu_move();
                                 screen_changed = true;
                             }
-                            InputAction::Select | InputAction::Back => {
+                            InputAction::Select => {
+                                audio_engine.play_menu_select();
+                                if selection == items_count - 1 {
+                                    let in_prog = *game_in_progress.lock().unwrap();
+                                    if in_prog {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::PauseMenu { selection: 3 };
+                                    } else {
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::MainMenu { selection: 2 };
+                                    }
+                                } else {
+                                    let (_disp, spoken) =
+                                        leaderboard::render_leaderboard(selection, &scores, &stats);
+                                    tolk.output(spoken, true);
+                                }
+                                screen_changed = true;
+                            }
+                            InputAction::Back => {
                                 audio_engine.play_menu_select();
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 0 };
+                                        AppScreen::PauseMenu { selection: 3 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 3 };
+                                        AppScreen::MainMenu { selection: 2 };
                                 }
                                 screen_changed = true;
                             }
@@ -775,10 +808,10 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 3 };
+                                        AppScreen::PauseMenu { selection: 5 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 5 };
+                                        AppScreen::MainMenu { selection: 4 };
                                 }
                                 screen_changed = true;
                             }
@@ -871,7 +904,7 @@ impl AppFrame {
                                         AppScreen::PauseMenu { selection: 4 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 4 };
+                                        AppScreen::MainMenu { selection: 3 };
                                 }
                                 screen_changed = true;
                             }
@@ -909,10 +942,10 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::PauseMenu { selection: 4 };
+                                        AppScreen::PauseMenu { selection: 6 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 6 };
+                                        AppScreen::MainMenu { selection: 5 };
                                 }
                                 screen_changed = true;
                             }
@@ -1037,6 +1070,12 @@ impl AppFrame {
                                         audio_engine.play_hold_sound();
                                     }
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                                    let callout_tech =
+                                        settings.lock().unwrap().piece_callouts_technical;
+                                    tolk.output(
+                                        gs.current_piece.t_type.as_str(callout_tech),
+                                        false,
+                                    );
                                 } else {
                                     audio_engine.play_hold_denied_sound();
                                 }
@@ -1106,6 +1145,12 @@ impl AppFrame {
                                         AppScreen::MainMenu { selection: 0 };
                                 } else {
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                                    let callout_tech =
+                                        settings.lock().unwrap().piece_callouts_technical;
+                                    tolk.output(
+                                        gs.current_piece.t_type.as_str(callout_tech),
+                                        false,
+                                    );
                                     if let Some(acquired) = gs.item_acquired {
                                         audio_engine.play_item_acquire();
                                         tolk.output(
@@ -1243,6 +1288,8 @@ impl AppFrame {
                             *screen.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
                         } else {
                             audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                            let callout_tech = settings.lock().unwrap().piece_callouts_technical;
+                            tolk.output(gs.current_piece.t_type.as_str(callout_tech), false);
                             if let Some(acquired) = gs.item_acquired {
                                 audio_engine.play_item_acquire();
                                 tolk.output(format!("Acquired {}!", acquired.as_str()), true);

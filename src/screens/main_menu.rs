@@ -3,6 +3,7 @@ pub fn get_main_menu_options(in_prog: bool) -> Vec<&'static str> {
         vec![
             "Resume Game",
             "New Game",
+            "Save Game",
             "Load Game",
             "High Scores & Stats",
             "How to Play",

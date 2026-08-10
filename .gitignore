@@ -18,4 +18,5 @@ $RECYCLE.BIN/
 mcp_config.json
 .agents/mcp_config.json
 *.mcp.json
+*.db
 
