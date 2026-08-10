@@ -1,5 +1,13 @@
 use crate::db::{HighScoreEntry, PlayerStats};
 
+pub fn get_leaderboard_items_count(scores: &[HighScoreEntry]) -> usize {
+    if scores.is_empty() {
+        3
+    } else {
+        scores.len() + 2
+    }
+}
+
 pub fn render_leaderboard(
     selection: usize,
     scores: &[HighScoreEntry],

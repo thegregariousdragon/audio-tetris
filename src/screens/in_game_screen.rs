@@ -5,9 +5,5 @@ pub fn render_in_game(gs: &GameState) -> (String, String) {
         "In Game\nLevel: {}\nScore: {}\nLines: {}\nZone Meter: {}%\n\nPress Escape to pause game.",
         gs.level, gs.score, gs.total_lines, gs.zone_meter
     );
-    let spoken_text = format!(
-        "In Game. Level {}, Score {}, Lines {}.",
-        gs.level, gs.score, gs.total_lines
-    );
-    (display_text, spoken_text)
+    (display_text, "".to_string())
 }
