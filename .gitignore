@@ -13,3 +13,9 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 *.log
+
+# Local MCP configuration (contains API keys)
+mcp_config.json
+.agents/mcp_config.json
+*.mcp.json
+
