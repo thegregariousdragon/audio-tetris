@@ -1376,19 +1376,17 @@ impl AppFrame {
                 316 | 68 | 100 => Some(InputAction::Right), // RIGHT Arrow / D
                 13 | 370 => Some(InputAction::Select),     // Return / Enter
                 27 => Some(InputAction::Back),             // Escape
+                9 => Some(InputAction::Start),             // Tab
                 32 => Some(InputAction::HardDrop),         // Space
-                90 | 122 => Some(InputAction::RotateLeft), // Z key
-                88 | 120 => Some(InputAction::RotateRight), // X key
-                67 | 99 => Some(InputAction::Hold),        // C key
-                82 | 114 => Some(InputAction::Radar),      // R key
-                70 | 102 => Some(InputAction::UseItem),    // F key
-                80 | 112 => Some(InputAction::Start),      // P key
-                306 => Some(InputAction::Zone),            // R-Shift key
-                340 => Some(InputAction::NextTrack),       // F11 key
-                339 => Some(InputAction::PrevTrack),       // F10 key
-                338 => Some(InputAction::Mute),            // F9 key
-                72 | 104 => Some(InputAction::HelpMode),   // H key
-                73 | 105 => Some(InputAction::PieceInfo),  // I key
+                90 | 122 | 44 => Some(InputAction::RotateLeft), // Z, Comma
+                88 | 120 | 46 => Some(InputAction::RotateRight), // X, Period
+                67 | 99 | 47 => Some(InputAction::Hold),   // C, Slash
+                69 | 101 | 76 | 108 | 82 | 114 => Some(InputAction::Radar), // E, L, R
+                81 | 113 | 75 | 107 => Some(InputAction::Zone), // Q, K
+                86 | 118 | 59 | 186 | 73 | 105 => Some(InputAction::PieceInfo), // V, Semicolon, I
+                70 | 102 | 306 | 340 | 344 | 160 | 161 => Some(InputAction::UseItem), // F, Shift
+                80 | 112 => Some(InputAction::Start),      // P
+                72 | 104 => Some(InputAction::HelpMode),   // H
                 _ => None,
             };
 
