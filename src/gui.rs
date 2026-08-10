@@ -1366,7 +1366,7 @@ impl AppFrame {
             let action = match key_code {
                 315 | 87 | 119 => {
                     if current_screen_val == AppScreen::InGame {
-                        Some(InputAction::HardDrop)
+                        None
                     } else {
                         Some(InputAction::Up)
                     }
@@ -1377,18 +1377,18 @@ impl AppFrame {
                 13 | 370 => Some(InputAction::Select),     // Return / Enter
                 27 => Some(InputAction::Back),             // Escape
                 9 => Some(InputAction::Start),             // Tab
-                32 => Some(InputAction::HardDrop),         // Space
+                32 => Some(InputAction::HardDrop),         // Space ONLY for Hard Drop
                 90 | 122 | 44 => Some(InputAction::RotateLeft), // Z, Comma
                 88 | 120 | 46 => Some(InputAction::RotateRight), // X, Period
                 67 | 99 | 47 => Some(InputAction::Hold),   // C, Slash
-                69 | 101 | 76 | 108 | 82 | 114 => Some(InputAction::Radar), // E, L, R
+                69 | 101 | 76 | 108 => Some(InputAction::Radar), // E, L (No R key)
                 81 | 113 | 75 | 107 => Some(InputAction::Zone), // Q, K
                 86 | 118 | 59 | 186 => Some(InputAction::PieceInfo), // V, Semicolon
-                70 | 102 | 306 | 340 | 344 | 160 | 161 => Some(InputAction::UseItem), // F, Shift
-                73 | 105 | 339 => Some(InputAction::PrevTrack), // I, F10
-                79 | 111 | 338 => Some(InputAction::Mute), // O, F9
-                80 | 112 => Some(InputAction::NextTrack),  // P, F11
-                72 | 104 => Some(InputAction::HelpMode),   // H
+                70 | 102 | 306 | 344 | 160 | 161 => Some(InputAction::UseItem), // F, Left/Right Shift
+                73 | 105 => Some(InputAction::PrevTrack),                       // I
+                79 | 111 => Some(InputAction::Mute),                            // O
+                80 | 112 => Some(InputAction::NextTrack),                       // P
+                72 | 104 => Some(InputAction::HelpMode),                        // H
                 _ => None,
             };
 

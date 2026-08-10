@@ -2,16 +2,17 @@ pub fn get_how_to_play_lines() -> Vec<&'static str> {
     vec![
         "Welcome to Audio Tetris, a fully accessible audio-first puzzle game!",
         "Controls:",
-        "LEFT/RIGHT Arrows: Move piece horizontally. Audio panning reflects position.",
-        "DOWN Arrow: Soft drop.",
-        "SPACE BAR: Hard drop with heavy impact thud.",
-        "UP Arrow or Z: Rotate Clockwise / Counter-Clockwise.",
-        "C Key: Hold piece.",
-        "R Key: Play Radar Sweep to hear stack heights.",
-        "R-SHIFT Key: Activate Zone Mode when meter is full.",
-        "F Key: Use acquired Item (Magnet, Nuke, Laser).",
-        "Escape Key: Pause game or return to menu.",
-        "F1 Key: Keyboard Help Mode.",
+        "LEFT/RIGHT Arrows or A/D: Move piece left/right.",
+        "DOWN Arrow or S: Soft drop.",
+        "SPACE BAR: Hard drop.",
+        "Z or Comma / X or Period: Rotate Counter-Clockwise / Clockwise.",
+        "C Key or Slash: Hold piece.",
+        "E or L Key: Radar Sweep.",
+        "Q or K Key: Activate Zone Mode when meter is charged.",
+        "F Key or Shift: Use acquired Item (Magnet, Nuke, Laser).",
+        "V or Semicolon Key: Inspect current piece shape and column span.",
+        "I, O, P Keys: Previous Track, Toggle Mute, Next Track.",
+        "Escape Key: Pause game or return to previous menu.",
     ]
 }
 
