@@ -40,21 +40,23 @@ pub fn get_action_description(action: InputAction) -> &'static str {
     match action {
         InputAction::Left => "Left Arrow or A: Move piece left.",
         InputAction::Right => "Right Arrow or D: Move piece right.",
-        InputAction::Down => "Down Arrow or S: Soft drop piece.",
+        InputAction::Down => {
+            "Down Arrow or S: Soft drop piece in-game, or move menu selection down."
+        }
         InputAction::HardDrop => "Space Bar: Hard drop piece instantly.",
         InputAction::RotateLeft => "Z or Comma: Rotate piece counter-clockwise.",
         InputAction::RotateRight => "X or Period: Rotate piece clockwise.",
         InputAction::Hold => "C or Slash: Hold piece.",
         InputAction::Radar => "E or L Key: Radar sweep for stack heights.",
         InputAction::Zone => "Q or K Key: Activate Zone mode.",
-        InputAction::UseItem => "F Key or Shift: Use power-up item.",
+        InputAction::UseItem => "Shift Key: Use power-up item.",
         InputAction::PieceInfo => "V or Semicolon Key: Inspect piece shape and column span.",
         InputAction::PrevTrack => "I Key: Previous background music track.",
         InputAction::Mute => "O Key: Toggle background music mute.",
         InputAction::NextTrack => "P Key: Next background music track.",
-        InputAction::Start => "Tab Key: Quick Pause or Resume game.",
+        InputAction::Start => "Start Button: Gamepad Menu / Pause.",
         InputAction::HelpMode => "H Key: Keyboard Help Mode.",
-        InputAction::Up => "Up Arrow or W: Menu selection up.",
+        InputAction::Up => "Up Arrow or W: Move menu selection up.",
         InputAction::Select => "Enter Key: Select menu option.",
         InputAction::Back => "Escape Key: Go back or pause game.",
     }
@@ -267,23 +269,25 @@ impl AppFrame {
                 let mut screen_changed = false;
                 let mut is_initial_load = false;
 
-                // Global Music Controls
-                if action == InputAction::NextTrack {
-                    let track = audio_engine.next_track();
-                    tolk.output(format!("Playing {}", track), true);
-                    return;
-                } else if action == InputAction::PrevTrack {
-                    let track = audio_engine.prev_track();
-                    tolk.output(format!("Playing {}", track), true);
-                    return;
-                } else if action == InputAction::Mute {
-                    let is_muted = audio_engine.toggle_mute();
-                    if is_muted {
-                        tolk.output("Music Muted", true);
-                    } else {
-                        tolk.output("Music Unmuted", true);
+                // Global Music Controls (except in KeyDescriber mode)
+                if !matches!(current_screen, AppScreen::KeyDescriber { .. }) {
+                    if action == InputAction::NextTrack {
+                        let track = audio_engine.next_track();
+                        tolk.output(format!("Playing {}", track), true);
+                        return;
+                    } else if action == InputAction::PrevTrack {
+                        let track = audio_engine.prev_track();
+                        tolk.output(format!("Playing {}", track), true);
+                        return;
+                    } else if action == InputAction::Mute {
+                        let is_muted = audio_engine.toggle_mute();
+                        if is_muted {
+                            tolk.output("Music Muted", true);
+                        } else {
+                            tolk.output("Music Unmuted", true);
+                        }
+                        return;
                     }
-                    return;
                 }
 
                 // Global Help Mode (H key)
@@ -1439,19 +1443,18 @@ impl AppFrame {
                 316 | 68 | 100 => Some(InputAction::Right), // RIGHT Arrow / D
                 13 | 370 => Some(InputAction::Select),     // Return / Enter
                 27 => Some(InputAction::Back),             // Escape
-                9 => Some(InputAction::Start),             // Tab
                 32 => Some(InputAction::HardDrop),         // Space ONLY for Hard Drop
                 90 | 122 | 44 => Some(InputAction::RotateLeft), // Z, Comma
                 88 | 120 | 46 => Some(InputAction::RotateRight), // X, Period
                 67 | 99 | 47 => Some(InputAction::Hold),   // C, Slash
-                69 | 101 | 76 | 108 => Some(InputAction::Radar), // E, L (No R key)
+                69 | 101 | 76 | 108 => Some(InputAction::Radar), // E, L
                 81 | 113 | 75 | 107 => Some(InputAction::Zone), // Q, K
                 86 | 118 | 59 | 186 => Some(InputAction::PieceInfo), // V, Semicolon
-                70 | 102 | 306 | 344 | 160 | 161 => Some(InputAction::UseItem), // F, Left/Right Shift
-                73 | 105 => Some(InputAction::PrevTrack),                       // I
-                79 | 111 => Some(InputAction::Mute),                            // O
-                80 | 112 => Some(InputAction::NextTrack),                       // P
-                72 | 104 => Some(InputAction::HelpMode),                        // H
+                306 | 344 | 160 | 161 => Some(InputAction::UseItem), // Shift keys ONLY
+                73 | 105 => Some(InputAction::PrevTrack),  // I
+                79 | 111 => Some(InputAction::Mute),       // O
+                80 | 112 => Some(InputAction::NextTrack),  // P
+                72 | 104 => Some(InputAction::HelpMode),   // H
                 _ => None,
             };
 
