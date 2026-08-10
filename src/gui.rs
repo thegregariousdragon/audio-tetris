@@ -466,8 +466,9 @@ impl AppFrame {
                                             AppScreen::SaveScreen { selection: 0 };
                                     }
                                     2 => {
-                                        *screen_state.lock().unwrap() =
-                                            AppScreen::LoadScreen { selection: 0 };
+                                        *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
+                                            action: ConfirmAction::AbandonGame,
+                                        };
                                     }
                                     3 => {
                                         *screen_state.lock().unwrap() =
@@ -477,11 +478,6 @@ impl AppFrame {
                                         *screen_state.lock().unwrap() =
                                             AppScreen::HowToPlay { scroll_line: 0 };
                                         is_initial_load = true;
-                                    }
-                                    5 => {
-                                        *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
-                                            action: ConfirmAction::AbandonGame,
-                                        };
                                     }
                                     _ => {}
                                 }
@@ -971,7 +967,7 @@ impl AppFrame {
                             let in_prog = *game_in_progress.lock().unwrap();
                             if in_prog {
                                 *screen_state.lock().unwrap() =
-                                    AppScreen::PauseMenu { selection: 5 };
+                                    AppScreen::PauseMenu { selection: 2 };
                             } else {
                                 *screen_state.lock().unwrap() =
                                     AppScreen::MainMenu { selection: 0 };
@@ -1029,7 +1025,22 @@ impl AppFrame {
                             InputAction::RotateRight => {
                                 if gs.rotate_cw() {
                                     audio_engine.play_rotate_cw_sound(gs.current_piece.y);
-                                    tolk.output("Rotated Right", true);
+                                    let rot_deg = match gs.current_piece.rotation {
+                                        0 => "0 degrees",
+                                        1 => "90 degrees",
+                                        2 => "180 degrees",
+                                        3 => "270 degrees",
+                                        _ => "",
+                                    };
+                                    let left = gs.current_piece.left_column() + 1;
+                                    let right = gs.current_piece.right_column() + 1;
+                                    tolk.output(
+                                        format!(
+                                            "Rotated Right, {}. Columns {} through {}",
+                                            rot_deg, left, right
+                                        ),
+                                        true,
+                                    );
                                 } else {
                                     audio_engine.play_aligned_sound();
                                 }
@@ -1037,7 +1048,22 @@ impl AppFrame {
                             InputAction::RotateLeft => {
                                 if gs.rotate_ccw() {
                                     audio_engine.play_rotate_ccw_sound(gs.current_piece.y);
-                                    tolk.output("Rotated Left", true);
+                                    let rot_deg = match gs.current_piece.rotation {
+                                        0 => "0 degrees",
+                                        1 => "90 degrees",
+                                        2 => "180 degrees",
+                                        3 => "270 degrees",
+                                        _ => "",
+                                    };
+                                    let left = gs.current_piece.left_column() + 1;
+                                    let right = gs.current_piece.right_column() + 1;
+                                    tolk.output(
+                                        format!(
+                                            "Rotated Left, {}. Columns {} through {}",
+                                            rot_deg, left, right
+                                        ),
+                                        true,
+                                    );
                                 } else {
                                     audio_engine.play_aligned_sound();
                                 }
