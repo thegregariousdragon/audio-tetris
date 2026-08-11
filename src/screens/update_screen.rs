@@ -65,6 +65,7 @@ pub fn render_update_screen(
     }
 
     let spoken = match (status, sel) {
+        (UpdateStatus::Checking, _) => "Checking...".to_string(),
         (UpdateStatus::Available(info), 0) => {
             format!(
                 "Install Update, Version {}. Option 1 of {}",
