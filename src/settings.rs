@@ -33,6 +33,9 @@ pub struct Settings {
 
     pub bgm_enabled: bool,
     pub saved_bgm_volume: f32, // The volume to restore when toggled back on
+
+    pub check_for_updates: bool,
+    pub last_update_check_timestamp: u64,
 }
 
 impl Default for Settings {
@@ -49,6 +52,9 @@ impl Default for Settings {
 
             bgm_enabled: true,
             saved_bgm_volume: 0.2,
+
+            check_for_updates: true,
+            last_update_check_timestamp: 0,
         }
     }
 }

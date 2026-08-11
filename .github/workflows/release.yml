@@ -32,15 +32,15 @@ jobs:
       - name: Stage release bundle
         shell: powershell
         run: |
-          $StagingDir = "audio-tetris-windows-x64"
+          $StagingDir = "Audio Tetris"
           New-Item -ItemType Directory -Force -Path $StagingDir
-          Copy-Item "target/release/accessible_tetris.exe" -Destination "$StagingDir/accessible_tetris.exe"
+          Copy-Item "target/release/audio-tetris.exe" -Destination "$StagingDir/audio-tetris.exe"
           Get-ChildItem -Path "target/release" -Filter "*.dll" | Copy-Item -Destination "$StagingDir/"
           Copy-Item -Recurse "assets" -Destination "$StagingDir/assets"
           if (Test-Path "README.md") { Copy-Item "README.md" -Destination "$StagingDir/README.md" }
           if (Test-Path "LICENSE") { Copy-Item "LICENSE" -Destination "$StagingDir/LICENSE" }
           if (Test-Path "settings.json") { Copy-Item "settings.json" -Destination "$StagingDir/settings.json" }
-          Compress-Archive -Path "$StagingDir/*" -DestinationPath "audio-tetris-windows-x64.zip" -Force
+          Compress-Archive -Path "$StagingDir" -DestinationPath "audio-tetris-windows-x64.zip" -Force
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

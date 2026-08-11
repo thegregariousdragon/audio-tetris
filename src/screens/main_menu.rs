@@ -9,6 +9,7 @@ pub fn get_main_menu_options(in_prog: bool) -> Vec<&'static str> {
             "How to Play",
             "Settings",
             "About",
+            "Update",
             "Quit",
         ]
     } else {
@@ -19,6 +20,7 @@ pub fn get_main_menu_options(in_prog: bool) -> Vec<&'static str> {
             "How to Play",
             "Settings",
             "About",
+            "Update",
             "Quit",
         ]
     }
