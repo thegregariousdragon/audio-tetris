@@ -64,13 +64,11 @@ pub fn render_update_screen(
         }
     }
 
-    let spoken = match status {
-        UpdateStatus::Available(info) => {
+    let spoken = match (status, sel) {
+        (UpdateStatus::Available(info), 0) => {
             format!(
-                "Update Available, Version {}. Option {} {} of {}",
+                "Install Update, Version {}. Option 1 of {}",
                 info.version,
-                options[sel],
-                sel + 1,
                 options.len()
             )
         }
