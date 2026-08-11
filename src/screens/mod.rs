@@ -8,26 +8,56 @@ pub mod main_menu;
 pub mod pause_menu;
 pub mod save_screen;
 pub mod settings_screen;
+pub mod update_screen;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+use crate::updater::{UpdateInfo, UpdateStatus};
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum ConfirmAction {
     NewGame,
     AbandonGame,
     QuitApp,
+    UpdateApp(UpdateInfo),
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AppScreen {
-    MainMenu { selection: usize },
-    PauseMenu { selection: usize },
-    SaveScreen { selection: usize },
-    LoadScreen { selection: usize },
-    Leaderboard { selection: usize },
-    Settings { selection: usize },
-    SpeechVerbosity { selection: usize },
-    HowToPlay { scroll_line: usize },
-    About { scroll_line: usize },
-    ConfirmDialog { action: ConfirmAction },
+    MainMenu {
+        selection: usize,
+    },
+    PauseMenu {
+        selection: usize,
+    },
+    SaveScreen {
+        selection: usize,
+    },
+    LoadScreen {
+        selection: usize,
+    },
+    Leaderboard {
+        selection: usize,
+    },
+    Settings {
+        selection: usize,
+    },
+    SpeechVerbosity {
+        selection: usize,
+    },
+    HowToPlay {
+        scroll_line: usize,
+    },
+    About {
+        scroll_line: usize,
+    },
+    Update {
+        selection: usize,
+        status: UpdateStatus,
+    },
+    ConfirmDialog {
+        action: ConfirmAction,
+    },
     InGame,
-    KeyDescriber { esc_count: usize },
+    KeyDescriber {
+        esc_count: usize,
+    },
 }

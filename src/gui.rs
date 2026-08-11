@@ -8,9 +8,10 @@ use crate::db::Database;
 use crate::logic::GameState;
 use crate::screens::{
     AppScreen, ConfirmAction, about_screen, confirm_dialog, how_to_play, in_game_screen,
-    leaderboard, load_screen, main_menu, pause_menu, save_screen, settings_screen,
+    leaderboard, load_screen, main_menu, pause_menu, save_screen, settings_screen, update_screen,
 };
 use crate::settings::{Difficulty, Settings};
+use crate::updater::{self, UpdateStatus};
 use tolk::Tolk;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -124,6 +125,35 @@ impl AppFrame {
             db,
         };
 
+        if settings_data.check_for_updates {
+            let settings_bg = app_frame.settings.clone();
+            let screen_bg = app_frame.screen.clone();
+            let tolk_bg = app_frame.tolk.clone();
+            let last_check = settings_data.last_update_check_timestamp;
+
+            std::thread::spawn(move || {
+                let cur_ver = env!("APP_VERSION");
+                let (status, now) = updater::check_latest_release(false, cur_ver, last_check);
+                {
+                    let mut s = settings_bg.lock().unwrap();
+                    s.last_update_check_timestamp = now;
+                    s.save();
+                }
+                if let UpdateStatus::Available(info) = status {
+                    let current_scr = screen_bg.lock().unwrap().clone();
+                    if current_scr != AppScreen::InGame {
+                        tolk_bg.speak(
+                            format!(
+                                "Update available! Version {} is now available. Select Update in Main Menu to view release notes.",
+                                info.version
+                            ),
+                            true,
+                        );
+                    }
+                }
+            });
+        }
+
         app_frame.render_screen(true, true);
         app_frame
     }
@@ -134,7 +164,7 @@ impl AppFrame {
     }
 
     pub fn render_screen(&self, speak: bool, initial_load: bool) {
-        let screen = *self.screen.lock().unwrap();
+        let screen = self.screen.lock().unwrap().clone();
         let s = self.settings.lock().unwrap();
         let in_prog = *self.game_in_progress.lock().unwrap();
 
@@ -162,7 +192,10 @@ impl AppFrame {
                 how_to_play::render_how_to_play(scroll_line, initial_load)
             }
             AppScreen::About { scroll_line } => about_screen::render_about(scroll_line, initial_load),
-            AppScreen::ConfirmDialog { action } => confirm_dialog::render_confirm_dialog(action),
+            AppScreen::Update { selection, ref status } => {
+                update_screen::render_update_screen(selection, env!("APP_VERSION"), status)
+            }
+            AppScreen::ConfirmDialog { action } => confirm_dialog::render_confirm_dialog(action.clone()),
             AppScreen::InGame => {
                 let gs = self.game_state.lock().unwrap();
                 in_game_screen::render_in_game(&gs)
@@ -201,7 +234,7 @@ impl AppFrame {
             let db = db.clone();
 
             move |speak: bool, initial_load: bool| {
-                let screen = *screen_state.lock().unwrap();
+                let screen = screen_state.lock().unwrap().clone();
                 let s = settings.lock().unwrap();
                 let in_prog = *game_in_progress.lock().unwrap();
 
@@ -232,6 +265,9 @@ impl AppFrame {
                     }
                     AppScreen::About { scroll_line } => {
                         about_screen::render_about(scroll_line, initial_load)
+                    }
+                    AppScreen::Update { selection, ref status } => {
+                        update_screen::render_update_screen(selection, env!("APP_VERSION"), status)
                     }
                     AppScreen::ConfirmDialog { action } => {
                         confirm_dialog::render_confirm_dialog(action)
@@ -265,7 +301,7 @@ impl AppFrame {
             let db = db.clone();
 
             Rc::new(RefCell::new(move |action: InputAction| {
-                let current_screen = *screen_state.lock().unwrap();
+                let current_screen = screen_state.lock().unwrap().clone();
                 let mut screen_changed = false;
                 let mut is_initial_load = false;
 
@@ -390,6 +426,12 @@ impl AppFrame {
                                             is_initial_load = true;
                                         }
                                         8 => {
+                                            *screen_state.lock().unwrap() = AppScreen::Update {
+                                                selection: 0,
+                                                status: UpdateStatus::Idle,
+                                            };
+                                        }
+                                        9 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::ConfirmDialog {
                                                     action: ConfirmAction::QuitApp,
@@ -440,6 +482,12 @@ impl AppFrame {
                                             is_initial_load = true;
                                         }
                                         6 => {
+                                            *screen_state.lock().unwrap() = AppScreen::Update {
+                                                selection: 0,
+                                                status: UpdateStatus::Idle,
+                                            };
+                                        }
+                                        7 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::ConfirmDialog {
                                                     action: ConfirmAction::QuitApp,
@@ -695,14 +743,14 @@ impl AppFrame {
                     }
                     AppScreen::Settings { selection } => match action {
                         InputAction::Up => {
-                            let new_sel = if selection > 0 { selection - 1 } else { 6 };
+                            let new_sel = if selection > 0 { selection - 1 } else { 7 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::Settings { selection: new_sel };
                             audio_engine.play_menu_move();
                             screen_changed = true;
                         }
                         InputAction::Down => {
-                            let new_sel = if selection < 6 { selection + 1 } else { 0 };
+                            let new_sel = if selection < 7 { selection + 1 } else { 0 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::Settings { selection: new_sel };
                             audio_engine.play_menu_move();
@@ -759,6 +807,11 @@ impl AppFrame {
                                     ),
                                     true,
                                 );
+                            } else if selection == 6 {
+                                s.check_for_updates = !s.check_for_updates;
+                                let status = if s.check_for_updates { "On" } else { "Off" };
+                                audio_engine.play_menu_move();
+                                tolk.speak(format!("Auto Update Notifications {}", status), true);
                             }
                             s.save();
                             screen_changed = true;
@@ -814,6 +867,11 @@ impl AppFrame {
                                     ),
                                     true,
                                 );
+                            } else if selection == 6 {
+                                s.check_for_updates = !s.check_for_updates;
+                                let status = if s.check_for_updates { "On" } else { "Off" };
+                                audio_engine.play_menu_move();
+                                tolk.speak(format!("Auto Update Notifications {}", status), true);
                             }
                             s.save();
                             screen_changed = true;
@@ -824,7 +882,7 @@ impl AppFrame {
                                 *screen_state.lock().unwrap() =
                                     AppScreen::SpeechVerbosity { selection: 0 };
                                 screen_changed = true;
-                            } else if selection == 6 || action == InputAction::Back {
+                            } else if selection == 7 || action == InputAction::Back {
                                 audio_engine.play_menu_select();
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
@@ -973,6 +1031,134 @@ impl AppFrame {
                             _ => {}
                         }
                     }
+                    AppScreen::Update {
+                        selection,
+                        ref status,
+                    } => {
+                        let options_count = match status {
+                            UpdateStatus::Available(_) => 3,
+                            _ => 2,
+                        };
+
+                        match action {
+                            InputAction::Up => {
+                                let new_sel = if selection > 0 {
+                                    selection - 1
+                                } else {
+                                    options_count - 1
+                                };
+                                *screen_state.lock().unwrap() = AppScreen::Update {
+                                    selection: new_sel,
+                                    status: status.clone(),
+                                };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Down => {
+                                let new_sel = if selection < options_count - 1 {
+                                    selection + 1
+                                } else {
+                                    0
+                                };
+                                *screen_state.lock().unwrap() = AppScreen::Update {
+                                    selection: new_sel,
+                                    status: status.clone(),
+                                };
+                                audio_engine.play_menu_move();
+                                screen_changed = true;
+                            }
+                            InputAction::Select => {
+                                audio_engine.play_menu_select();
+                                match (status, selection) {
+                                    (UpdateStatus::Available(info), 0) => {
+                                        *screen_state.lock().unwrap() = AppScreen::ConfirmDialog {
+                                            action: ConfirmAction::UpdateApp(info.clone()),
+                                        };
+                                        screen_changed = true;
+                                    }
+                                    (UpdateStatus::Available(_), 1) | (_, 0) => {
+                                        *screen_state.lock().unwrap() = AppScreen::Update {
+                                            selection: 0,
+                                            status: UpdateStatus::Checking,
+                                        };
+                                        screen_changed = true;
+
+                                        let screen_state_bg = screen_state.clone();
+                                        let settings_bg = settings.clone();
+                                        let tolk_bg = tolk.clone();
+
+                                        std::thread::spawn(move || {
+                                            let cur_ver = env!("APP_VERSION");
+                                            let last_check = settings_bg
+                                                .lock()
+                                                .unwrap()
+                                                .last_update_check_timestamp;
+                                            let (new_status, now) = updater::check_latest_release(
+                                                true, cur_ver, last_check,
+                                            );
+
+                                            {
+                                                let mut s = settings_bg.lock().unwrap();
+                                                s.last_update_check_timestamp = now;
+                                                s.save();
+                                            }
+
+                                            let mut scr = screen_state_bg.lock().unwrap();
+                                            if let AppScreen::Update { ref mut status, .. } = *scr {
+                                                *status = new_status.clone();
+                                            }
+                                            match new_status {
+                                                UpdateStatus::Available(info) => {
+                                                    tolk_bg.speak(
+                                                        format!(
+                                                            "Update Available: Version {}",
+                                                            info.version
+                                                        ),
+                                                        true,
+                                                    );
+                                                }
+                                                UpdateStatus::UpToDate => {
+                                                    tolk_bg.speak(
+                                                        "You are using the latest version of Audio Tetris.",
+                                                        true,
+                                                    );
+                                                }
+                                                UpdateStatus::Error(e) => {
+                                                    tolk_bg.speak(
+                                                        format!(
+                                                            "Error checking for updates: {}",
+                                                            e
+                                                        ),
+                                                        true,
+                                                    );
+                                                }
+                                                _ => {}
+                                            }
+                                        });
+                                    }
+                                    (UpdateStatus::Available(_), 2) | (_, 1) => {
+                                        let in_prog = *game_in_progress.lock().unwrap();
+                                        let back_sel = if in_prog { 8 } else { 6 };
+                                        *screen_state.lock().unwrap() = AppScreen::MainMenu {
+                                            selection: back_sel,
+                                        };
+                                        screen_changed = true;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            InputAction::Back => {
+                                audio_engine.play_menu_select();
+                                let in_prog = *game_in_progress.lock().unwrap();
+                                let back_sel = if in_prog { 8 } else { 6 };
+                                *screen_state.lock().unwrap() = AppScreen::MainMenu {
+                                    selection: back_sel,
+                                };
+                                screen_changed = true;
+                            }
+                            _ => {}
+                        }
+                    }
                     AppScreen::ConfirmDialog {
                         action: confirm_act,
                     } => match action {
@@ -997,6 +1183,24 @@ impl AppFrame {
                                 ConfirmAction::QuitApp => {
                                     frame.close(true);
                                     return;
+                                }
+                                ConfirmAction::UpdateApp(ref info) => {
+                                    tolk.output("Downloading update...", true);
+                                    let download_url = info.download_url.clone();
+                                    *screen_state.lock().unwrap() = AppScreen::Update {
+                                        selection: 0,
+                                        status: UpdateStatus::Downloading,
+                                    };
+                                    render_in_closure(true, false);
+
+                                    let tolk_bg = tolk.clone();
+                                    std::thread::spawn(move || {
+                                        if let Err(e) =
+                                            updater::perform_in_place_update(&download_url)
+                                        {
+                                            tolk_bg.speak(format!("Update failed: {}", e), true);
+                                        }
+                                    });
                                 }
                             }
                             screen_changed = true;
@@ -1429,7 +1633,7 @@ impl AppFrame {
                 }
                 _ => 0,
             };
-            let current_screen_val = *screen_state.lock().unwrap();
+            let current_screen_val = screen_state.lock().unwrap().clone();
             let action = match key_code {
                 315 | 87 | 119 => {
                     if current_screen_val == AppScreen::InGame {

@@ -1,5 +1,5 @@
 [package]
-name = "accessible_tetris"
+name = "audio-tetris"
 version = "1.0.2"
 edition = "2024"
 rust-version = "1.85"

@@ -17,6 +17,10 @@ pub fn render_settings(selection: usize, s: &Settings) -> (String, String) {
             "Background Music Volume: {}%",
             (s.bgm_volume * 100.0) as i32
         ),
+        format!(
+            "Auto-Update Notifications: {}",
+            if s.check_for_updates { "ON" } else { "OFF" }
+        ),
         "Back".to_string(),
     ];
 
