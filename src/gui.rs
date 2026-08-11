@@ -195,7 +195,9 @@ impl AppFrame {
             AppScreen::Update { selection, ref status } => {
                 update_screen::render_update_screen(selection, env!("APP_VERSION"), status)
             }
-            AppScreen::ConfirmDialog { action } => confirm_dialog::render_confirm_dialog(action.clone()),
+            AppScreen::ConfirmDialog { ref action } => {
+                confirm_dialog::render_confirm_dialog(action.clone())
+            }
             AppScreen::InGame => {
                 let gs = self.game_state.lock().unwrap();
                 in_game_screen::render_in_game(&gs)
@@ -210,7 +212,8 @@ impl AppFrame {
         self.text_display.set_label(&display_text);
 
         if speak && !spoken_text.is_empty() {
-            self.tolk.output(&spoken_text, true);
+            let interrupt = !matches!(screen, AppScreen::Update { .. });
+            self.tolk.output(&spoken_text, interrupt);
         }
     }
 
@@ -269,8 +272,8 @@ impl AppFrame {
                     AppScreen::Update { selection, ref status } => {
                         update_screen::render_update_screen(selection, env!("APP_VERSION"), status)
                     }
-                    AppScreen::ConfirmDialog { action } => {
-                        confirm_dialog::render_confirm_dialog(action)
+                    AppScreen::ConfirmDialog { ref action } => {
+                        confirm_dialog::render_confirm_dialog(action.clone())
                     }
                     AppScreen::InGame => {
                         let gs = game_state.lock().unwrap();
@@ -284,7 +287,8 @@ impl AppFrame {
 
                 text_ctrl.set_label(&display_text);
                 if speak && !spoken_text.is_empty() {
-                    tolk.output(&spoken_text, true);
+                    let interrupt = !matches!(screen, AppScreen::Update { .. });
+                    tolk.output(&spoken_text, interrupt);
                 }
             }
         };
@@ -1116,12 +1120,14 @@ impl AppFrame {
                                             status: UpdateStatus::Checking,
                                         };
                                         screen_changed = true;
+                                        tolk.speak("Checking for updates...", false);
 
                                         let screen_state_bg = screen_state.clone();
                                         let settings_bg = settings.clone();
                                         let tolk_bg = tolk.clone();
 
                                         std::thread::spawn(move || {
+                                            let start_time = std::time::Instant::now();
                                             let cur_ver = env!("APP_VERSION");
                                             let last_check = settings_bg
                                                 .lock()
@@ -1130,6 +1136,14 @@ impl AppFrame {
                                             let (new_status, now) = updater::check_latest_release(
                                                 true, cur_ver, last_check,
                                             );
+
+                                            let elapsed = start_time.elapsed();
+                                            if elapsed < std::time::Duration::from_millis(1200) {
+                                                std::thread::sleep(
+                                                    std::time::Duration::from_millis(1200)
+                                                        - elapsed,
+                                                );
+                                            }
 
                                             {
                                                 let mut s = settings_bg.lock().unwrap();
