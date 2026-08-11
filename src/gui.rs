@@ -1120,7 +1120,6 @@ impl AppFrame {
                                             status: UpdateStatus::Checking,
                                         };
                                         screen_changed = true;
-                                        tolk.speak("Checking for updates...", false);
 
                                         let screen_state_bg = screen_state.clone();
                                         let settings_bg = settings.clone();
@@ -1138,9 +1137,9 @@ impl AppFrame {
                                             );
 
                                             let elapsed = start_time.elapsed();
-                                            if elapsed < std::time::Duration::from_millis(1200) {
+                                            if elapsed < std::time::Duration::from_millis(2200) {
                                                 std::thread::sleep(
-                                                    std::time::Duration::from_millis(1200)
+                                                    std::time::Duration::from_millis(2200)
                                                         - elapsed,
                                                 );
                                             }
