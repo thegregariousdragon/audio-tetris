@@ -638,6 +638,7 @@ impl AudioEngine {
         }
     }
 
+    #[allow(dead_code)]
     pub fn toggle_mute(&self) -> bool {
         let mut enabled = self.bgm_enabled.lock().unwrap();
         *enabled = !*enabled;

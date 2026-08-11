@@ -289,6 +289,8 @@ impl AppFrame {
             }
         };
 
+        let last_rendered_screen = Rc::new(RefCell::new(screen_state.lock().unwrap().clone()));
+
         // 1. KEY DOWN HANDLER
         let on_action = {
             let game_state = game_state.clone();
@@ -299,6 +301,7 @@ impl AppFrame {
             let game_in_progress = game_in_progress.clone();
             let render_in_closure = render_in_closure.clone();
             let db = db.clone();
+            let last_rendered = last_rendered_screen.clone();
 
             Rc::new(RefCell::new(move |action: InputAction| {
                 let current_screen = screen_state.lock().unwrap().clone();
@@ -316,25 +319,59 @@ impl AppFrame {
                         tolk.output(format!("Playing {}", track), true);
                         return;
                     } else if action == InputAction::Mute {
-                        let is_muted = audio_engine.toggle_mute();
-                        if is_muted {
-                            tolk.output("Music Muted", true);
+                        let mut s = settings.lock().unwrap();
+                        s.bgm_enabled = !s.bgm_enabled;
+                        if s.bgm_enabled {
+                            s.bgm_volume = if s.saved_bgm_volume > 0.0 {
+                                s.saved_bgm_volume
+                            } else {
+                                0.2
+                            };
+                            audio_engine.set_bgm_volume(s.bgm_volume);
                         } else {
-                            tolk.output("Music Unmuted", true);
+                            s.saved_bgm_volume = s.bgm_volume;
+                            s.bgm_volume = 0.0;
+                            audio_engine.set_bgm_volume(0.0);
+                        }
+                        audio_engine.set_bgm_enabled(s.bgm_enabled);
+                        let status = if s.bgm_enabled { "On" } else { "Off" };
+                        tolk.speak(format!("Background Music {}", status), true);
+                        s.save();
+                        if matches!(current_screen, AppScreen::Settings { .. }) {
+                            render_in_closure(true, false);
                         }
                         return;
                     }
                 }
 
-                // Global Help Mode (H key)
-                if action == InputAction::HelpMode {
-                    audio_engine.play_menu_select();
-                    *screen_state.lock().unwrap() = AppScreen::KeyDescriber { esc_count: 0 };
-                    tolk.output(
-                        "Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit.",
-                        true,
-                    );
-                    render_in_closure(true, false);
+                if let AppScreen::KeyDescriber { esc_count } = current_screen {
+                    if action == InputAction::Back {
+                        let new_count = esc_count + 1;
+                        if new_count >= 2 {
+                            audio_engine.play_menu_select();
+                            let in_prog = *game_in_progress.lock().unwrap();
+                            if in_prog {
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::PauseMenu { selection: 0 };
+                            } else {
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::MainMenu { selection: 0 };
+                            }
+                            render_in_closure(true, false);
+                            tolk.output("Exited Help Mode.", true);
+                        } else {
+                            audio_engine.play_menu_move();
+                            *screen_state.lock().unwrap() = AppScreen::KeyDescriber {
+                                esc_count: new_count,
+                            };
+                            tolk.output("Press Escape once more to exit Help Mode.", true);
+                        }
+                    } else {
+                        audio_engine.play_menu_move();
+                        *screen_state.lock().unwrap() = AppScreen::KeyDescriber { esc_count: 0 };
+                        let desc = get_action_description(action);
+                        tolk.output(desc, true);
+                    }
                     return;
                 }
 
@@ -344,15 +381,12 @@ impl AppFrame {
                         audio_engine.play_menu_select();
                         tolk.output("Game Paused", true);
                         *screen_state.lock().unwrap() = AppScreen::PauseMenu { selection: 0 };
-                        screen_changed = true;
+                        render_in_closure(true, false);
                     } else if let AppScreen::PauseMenu { .. } = current_screen {
                         audio_engine.play_menu_select();
                         tolk.output("Game Resumed", true);
                         *screen_state.lock().unwrap() = AppScreen::InGame;
-                        screen_changed = true;
-                    }
-                    if screen_changed {
-                        render_in_closure(true, true);
+                        render_in_closure(true, false);
                     }
                     return;
                 }
@@ -1500,6 +1534,7 @@ impl AppFrame {
                 }
 
                 if screen_changed {
+                    *last_rendered.borrow_mut() = screen_state.lock().unwrap().clone();
                     render_in_closure(true, is_initial_load);
                 }
             }))
