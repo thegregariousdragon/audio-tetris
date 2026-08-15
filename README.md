@@ -56,11 +56,17 @@ This project relies on the following open source components:
 
 - **Rust Language:** Developed by the Rust Foundation (MIT and Apache 2.0 License).
 - **wxDragon:** Native GUI bindings authored by Allen Dang (MIT License).
-- **Tolk:** Screen reader abstraction library authored by Leonard de Ruijter (LGPL License).
-- **Rodio:** Audio playback library authored by Tomaka and the RustAudio team (MIT and Apache 2.0 License).
-- **Serde:** Data serialization framework authored by David Tolnay (MIT and Apache 2.0 License).
+- **Rodio:** Audio playback and synthesis library authored by Pierre Krieger (Tomaka) and the RustAudio team (MIT and Apache 2.0 License).
+- **Tolk:** Screen reader abstraction library authored by Leonard de Ruijter (LGPL License; Rust bindings by Davy Kager and tolk-rs community).
+- **Rusqlite / SQLite:** Embedded SQLite database engine authored by John Gallagher, Rusqlite contributors, and D. Richard Hipp (MIT License and Public Domain).
+- **Serde & Serde JSON:** High-performance data serialization framework authored by David Tolnay (MIT and Apache 2.0 License).
+- **Lofty:** Audio metadata and ID3 tagging library authored by EpocDotFr (MIT and Apache 2.0 License).
+- **Rand:** Random number generation library authored by The Rand Project Developers (MIT and Apache 2.0 License).
+- **Lazy Static:** Macro for static variable initialization authored by Marvin Löbel and the Rust community (MIT and Apache 2.0 License).
+- **WinRes:** Windows resource compiler authored by mxre (MIT License).
 
 ## License
 
 This project is licensed under the MIT License.
 Copyright (c) 2026 Gregory Lopez and Google Antigravity.
+

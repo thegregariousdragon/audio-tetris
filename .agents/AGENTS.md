@@ -85,3 +85,12 @@ The user uses a screen reader. For accessibility and ease of reading:
 - **Independent Inspection & Transparency**: All CI/CD workflows, automated build outputs, and release bundles must provide transparent, easily inspectable verification steps (local `cargo test`/`cargo clippy` and GitHub Actions workflow logs) so that all changes can be independently audited and verified.
 </RULE[trust_but_verify_verification_protocol]>
 
+<RULE[zero_regression_policy]>
+# Zero-Regression Policy & Functional Integrity
+
+- **Absolute Zero-Regression Standard**: Any code modifications, refactors, UI updates, or audio tweaks MUST NOT break, degrade, or alter any existing feature, screen navigation, sound cue, screen reader announcement, save slot persistence, or gameplay behavior.
+- **Immediate Failure Mode**: If any regression is detected or introduced during testing or verification, it is classified as an immediate failure mode. The subagent/developer must immediately halt further modifications, identify the root cause, and restore full functionality before completing the task.
+- **Comprehensive Pre-Flight Verification**: Every PR must be verified with automated test suites (`cargo test`), linting (`cargo clippy -- -D warnings`), formatting (`cargo fmt --check`), and syntax/type verification (`cargo check`).
+</RULE[zero_regression_policy]>
+
+
