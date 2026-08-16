@@ -88,8 +88,7 @@ impl AppFrame {
         let settings = Arc::new(Mutex::new(settings_data.clone()));
 
         let db = Arc::new(Database::new("audio_tetris.db").expect("Failed to initialize database"));
-        let has_saves = db.get_all_save_slots().iter().any(|s| s.is_some());
-        let initial_screen = if !settings_data.tutorial_completed && !has_saves {
+        let initial_screen = if !settings_data.tutorial_completed {
             AppScreen::TutorialPrompt
         } else {
             AppScreen::MainMenu { selection: 0 }
@@ -164,13 +163,37 @@ impl AppFrame {
             });
         }
 
-        app_frame.render_screen(true, true);
+        app_frame.render_screen(false, true);
         app_frame
     }
 
     pub fn show(&self) {
         self.frame.show(true);
         self.timer.borrow_mut().start(16, false);
+        self.render_screen(true, true);
+
+        let tolk = self.tolk.clone();
+        let screen = self.screen.clone();
+        let tutorial_state = self.tutorial_state.clone();
+        let in_prog = *self.game_in_progress.lock().unwrap();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            let scr = screen.lock().unwrap().clone();
+            let spoken = match scr {
+                AppScreen::TutorialPrompt => tutorial_prompt::render_tutorial_prompt().1,
+                AppScreen::Tutorial { .. } => {
+                    let ts = tutorial_state.lock().unwrap();
+                    tutorial_screen::render_tutorial(&ts).1
+                }
+                AppScreen::MainMenu { selection } => {
+                    main_menu::render_main_menu(selection, in_prog).1
+                }
+                _ => String::new(),
+            };
+            if !spoken.is_empty() {
+                tolk.output(&spoken, true);
+            }
+        });
     }
 
     pub fn render_screen(&self, speak: bool, initial_load: bool) {
@@ -182,7 +205,9 @@ impl AppFrame {
             AppScreen::TutorialPrompt => tutorial_prompt::render_tutorial_prompt(),
             AppScreen::Tutorial { .. } => {
                 let ts = self.tutorial_state.lock().unwrap();
-                tutorial_screen::render_tutorial(&ts)
+                let (d, s) = tutorial_screen::render_tutorial(&ts);
+                let spoken = if initial_load { s } else { String::new() };
+                (d, spoken)
             }
             AppScreen::MainMenu { selection } => main_menu::render_main_menu(selection, in_prog),
             AppScreen::PauseMenu { selection } => pause_menu::render_pause_menu(selection),
@@ -262,7 +287,9 @@ impl AppFrame {
                     AppScreen::TutorialPrompt => tutorial_prompt::render_tutorial_prompt(),
                     AppScreen::Tutorial { .. } => {
                         let ts = tutorial_state.lock().unwrap();
-                        tutorial_screen::render_tutorial(&ts)
+                        let (d, s) = tutorial_screen::render_tutorial(&ts);
+                        let spoken = if initial_load { s } else { String::new() };
+                        (d, spoken)
                     }
                     AppScreen::MainMenu { selection } => main_menu::render_main_menu(selection, in_prog),
                     AppScreen::PauseMenu { selection } => pause_menu::render_pause_menu(selection),
@@ -435,8 +462,16 @@ impl AppFrame {
                                 s.save();
                             }
                             *screen_state.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
-                            tolk.output("Main Menu.", true);
+                            tolk.output("Main Menu. New Game 1 of 9", true);
                             screen_changed = true;
+                        }
+                        InputAction::Up
+                        | InputAction::Down
+                        | InputAction::Left
+                        | InputAction::Right => {
+                            audio_engine.play_menu_move();
+                            let (_text, spoken) = tutorial_prompt::render_tutorial_prompt();
+                            tolk.output(spoken, true);
                         }
                         _ => {}
                     },
@@ -477,10 +512,6 @@ impl AppFrame {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::Tutorial { stage: 2 };
                                             audio_engine.play_menu_select();
-                                            tolk.output(
-                                                "Lesson 1 complete! Both edges reached. Advancing to Lesson 2.",
-                                                true,
-                                            );
                                             is_initial_load = true;
                                         }
                                     } else {
@@ -528,10 +559,6 @@ impl AppFrame {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::Tutorial { stage: 2 };
                                             audio_engine.play_menu_select();
-                                            tolk.output(
-                                                "Lesson 1 complete! Both edges reached. Advancing to Lesson 2.",
-                                                true,
-                                            );
                                             is_initial_load = true;
                                         }
                                     } else {
@@ -580,10 +607,6 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::Tutorial { stage: 3 };
                                     audio_engine.play_menu_select();
-                                    tolk.output(
-                                        "Lesson 2 complete! Great landing impact. Advancing to Lesson 3.",
-                                        true,
-                                    );
                                     is_initial_load = true;
                                     screen_changed = true;
                                 } else if current_stage == 3 {
@@ -593,10 +616,6 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::Tutorial { stage: 4 };
                                     audio_engine.play_menu_select();
-                                    tolk.output(
-                                        "Lesson 3 complete! Rotation mastered. Advancing to Lesson 4.",
-                                        true,
-                                    );
                                     is_initial_load = true;
                                     screen_changed = true;
                                 } else if current_stage == 4 {
@@ -607,10 +626,6 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::Tutorial { stage: 5 };
                                     audio_engine.play_menu_select();
-                                    tolk.output(
-                                        "Lesson 4 complete! Hold slot mastered. Advancing to Lesson 5.",
-                                        true,
-                                    );
                                     is_initial_load = true;
                                     screen_changed = true;
                                 } else if current_stage == 5 {
@@ -619,10 +634,6 @@ impl AppFrame {
                                         audio_engine.play_clear_sound(1);
                                         ts.sub_step = 1;
                                         ts.init_stage_board();
-                                        tolk.output(
-                                            "Single line cleared! Now Part 2: Drop your Long Bar down Column 10 for the 4-line Tetris Fanfare!",
-                                            true,
-                                        );
                                         is_initial_load = true;
                                     } else {
                                         audio_engine.play_hard_drop_sound();
@@ -632,10 +643,6 @@ impl AppFrame {
                                         *screen_state.lock().unwrap() =
                                             AppScreen::Tutorial { stage: 6 };
                                         audio_engine.play_menu_select();
-                                        tolk.output(
-                                            "Tetris! 4-line clear achieved. Advancing to Lesson 6.",
-                                            true,
-                                        );
                                         is_initial_load = true;
                                     }
                                     screen_changed = true;
@@ -645,7 +652,6 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::Tutorial { stage: 7 };
                                     audio_engine.play_menu_select();
-                                    tolk.output("Lesson 6 complete! Advancing to Lesson 7.", true);
                                     is_initial_load = true;
                                     screen_changed = true;
                                 } else if current_stage == 7 {
@@ -656,10 +662,6 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::Tutorial { stage: 8 };
                                     audio_engine.play_menu_select();
-                                    tolk.output(
-                                        "Lesson 7 complete! Zone combo cleared. Advancing to Lesson 8.",
-                                        true,
-                                    );
                                     is_initial_load = true;
                                     screen_changed = true;
                                 }
@@ -670,9 +672,9 @@ impl AppFrame {
                                     tolk.output(
                                         format!(
                                             "Current piece: T-shape. Columns {} through {}. Width: {}.",
-                                            ts.game_state.current_piece.left_column(),
-                                            ts.game_state.current_piece.right_column(),
-                                            ts.game_state.current_piece.width()
+                                             ts.game_state.current_piece.left_column(),
+                                             ts.game_state.current_piece.right_column(),
+                                             ts.game_state.current_piece.width()
                                         ),
                                         true,
                                     );
@@ -798,10 +800,6 @@ impl AppFrame {
                                         *screen_state.lock().unwrap() =
                                             AppScreen::Tutorial { stage: 9 };
                                         audio_engine.play_menu_select();
-                                        tolk.output(
-                                            "Nuke demolished the entire stack! Tutorial Complete. Advancing to Graduation.",
-                                            true,
-                                        );
                                         is_initial_load = true;
                                     }
                                     screen_changed = true;
@@ -814,7 +812,6 @@ impl AppFrame {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::Tutorial { stage: 7 };
                                     audio_engine.play_menu_select();
-                                    tolk.output("Lesson 6 complete! Advancing to Lesson 7.", true);
                                     is_initial_load = true;
                                     screen_changed = true;
                                 } else if current_stage == 9 {
@@ -824,7 +821,7 @@ impl AppFrame {
                                         s.tutorial_completed = true;
                                         s.save();
                                     }
-                                    tolk.output("Main Menu.", true);
+                                    tolk.output("Main Menu. New Game 1 of 9", true);
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 0 };
                                     screen_changed = true;
