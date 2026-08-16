@@ -229,6 +229,7 @@ pub struct GameState {
     pub zone_lines_cleared: u32,
     pub zone_timer_ms: i32,
     pub inventory: Option<ItemType>,
+    pub held_item: Option<ItemType>,
     pub item_spawned: Option<ItemType>,
     pub item_acquired: Option<ItemType>,
 }
@@ -259,6 +260,7 @@ impl GameState {
             zone_lines_cleared: 0,
             zone_timer_ms: 0,
             inventory: None,
+            held_item: None,
             item_spawned: None,
             item_acquired: None,
         };
@@ -600,15 +602,19 @@ impl GameState {
         }
 
         let current_type = self.current_piece.t_type;
+        let current_item = self.current_piece.item;
         let is_swap = self.hold_piece.is_some();
         let new_piece = if let Some(held) = self.hold_piece {
-            Tetromino::new(held)
+            let mut p = Tetromino::new(held);
+            p.item = self.held_item;
+            p
         } else {
             self.next_piece()
         };
 
         let new_type = new_piece.t_type;
         self.hold_piece = Some(current_type);
+        self.held_item = current_item;
         self.current_piece = new_piece;
         self.has_held = true;
 
@@ -647,7 +653,10 @@ impl GameState {
     }
 
     pub fn use_item(&mut self) -> Option<ItemType> {
-        let item = self.inventory.take()?;
+        let item = self
+            .inventory
+            .take()
+            .or_else(|| self.current_piece.item.take())?;
 
         match item {
             ItemType::Magnet => {
@@ -665,6 +674,12 @@ impl GameState {
                             write_y -= 1;
                         }
                     }
+                }
+                let cleared = self.clear_lines();
+                if cleared > 0 {
+                    self.total_lines += cleared;
+                    self.level = 1 + (self.total_lines / 10);
+                    self.score += 100 * cleared * cleared * self.level;
                 }
             }
             ItemType::Nuke => {
@@ -877,6 +892,58 @@ mod tests {
         gs.board[5][2] = Some(TetrominoType::I);
         gs.use_item();
         assert!(gs.board[5][2].is_none());
+    }
+
+    #[test]
+    fn test_powerup_direct_from_current_piece() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.inventory = None;
+        gs.current_piece.item = Some(ItemType::Magnet);
+        gs.board[10][0] = Some(TetrominoType::O);
+
+        let used = gs.use_item();
+        assert_eq!(used, Some(ItemType::Magnet));
+        assert!(gs.current_piece.item.is_none());
+        assert!(gs.board[BOARD_HEIGHT - 1][0].is_some());
+    }
+
+    #[test]
+    fn test_hold_preserves_item() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.current_piece.t_type = TetrominoType::T;
+        gs.current_piece.item = Some(ItemType::Laser);
+
+        let (is_swap, current_type, _) = gs.hold().unwrap();
+        assert!(!is_swap);
+        assert_eq!(current_type, TetrominoType::T);
+        assert_eq!(gs.hold_piece, Some(TetrominoType::T));
+        assert_eq!(gs.held_item, Some(ItemType::Laser));
+
+        gs.has_held = false; // reset for next turn
+        let (is_swap2, _, new_type) = gs.hold().unwrap();
+        assert!(is_swap2);
+        assert_eq!(new_type, TetrominoType::T);
+        assert_eq!(gs.current_piece.item, Some(ItemType::Laser));
+    }
+
+    #[test]
+    fn test_magnet_line_clearing() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.inventory = Some(ItemType::Magnet);
+        // Fill row 18 with 9 blocks and row 17 with 1 block at the missing column (x=4)
+        for x in 0..BOARD_WIDTH {
+            if x != 4 {
+                gs.board[BOARD_HEIGHT - 1][x] = Some(TetrominoType::I);
+            }
+        }
+        gs.board[BOARD_HEIGHT - 2][4] = Some(TetrominoType::I);
+
+        let initial_lines = gs.total_lines;
+        let used = gs.use_item();
+        assert_eq!(used, Some(ItemType::Magnet));
+        // Magnet pulled the block at (4, 18) down to (4, 19), completing the row and clearing it
+        assert_eq!(gs.total_lines, initial_lines + 1);
+        assert!(gs.score > 0);
     }
 
     #[test]
