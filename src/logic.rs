@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub const BOARD_WIDTH: usize = 10;
 pub const BOARD_HEIGHT: usize = 20;
 
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum TetrominoType {
     I,
     J,
@@ -17,11 +17,17 @@ pub enum TetrominoType {
     Z,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum ItemType {
     Magnet,
     Nuke,
     Laser,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemUseResult {
+    pub item: ItemType,
+    pub lines_cleared: u32,
 }
 
 impl ItemType {
@@ -330,9 +336,26 @@ impl GameState {
 
     #[allow(dead_code)]
     pub fn can_move_down(&self) -> bool {
+        self.can_fall()
+    }
+
+    pub fn can_fall(&self) -> bool {
         let mut new_piece = self.current_piece.clone();
         new_piece.y += 1;
         self.is_valid_position(&new_piece)
+    }
+
+    fn update_lock_delay_on_action(&mut self) {
+        if self.lock_delay_active {
+            if self.can_fall() {
+                self.lock_delay_active = false;
+                self.lock_delay_timer_ms = 0;
+                self.moves_since_lock_delay = 0;
+            } else if self.moves_since_lock_delay < 15 {
+                self.moves_since_lock_delay += 1;
+                self.lock_delay_timer_ms = 500;
+            }
+        }
     }
 
     pub fn get_ghost_y(&self) -> i32 {
@@ -356,6 +379,9 @@ impl GameState {
             if dx != 0 || dy > 0 {
                 self.last_move_was_spin = false;
             }
+            if dx != 0 {
+                self.update_lock_delay_on_action();
+            }
             true
         } else {
             false
@@ -376,6 +402,7 @@ impl GameState {
             if self.is_valid_position(&test_piece) {
                 self.current_piece = test_piece;
                 self.last_move_was_spin = true;
+                self.update_lock_delay_on_action();
                 return true;
             }
         }
@@ -396,6 +423,7 @@ impl GameState {
             if self.is_valid_position(&test_piece) {
                 self.current_piece = test_piece;
                 self.last_move_was_spin = true;
+                self.update_lock_delay_on_action();
                 return true;
             }
         }
@@ -544,6 +572,9 @@ impl GameState {
             }
         } else {
             self.combo = 0;
+            if is_t_spin {
+                self.score += 400 * self.level;
+            }
         }
 
         self.current_piece = self.next_piece();
@@ -552,6 +583,8 @@ impl GameState {
         }
         self.has_held = false;
         self.lock_delay_active = false;
+        self.lock_delay_timer_ms = 0;
+        self.moves_since_lock_delay = 0;
 
         LockResult {
             cleared_lines: reported_clears,
@@ -591,6 +624,8 @@ impl GameState {
                 1
             };
             self.score += 100 * lines * lines * multiplier * self.level;
+            self.total_lines += lines;
+            self.level = 1 + (self.total_lines / 10);
         }
         lines
     }
@@ -617,6 +652,14 @@ impl GameState {
         self.held_item = current_item;
         self.current_piece = new_piece;
         self.has_held = true;
+        self.lock_delay_active = false;
+        self.lock_delay_timer_ms = 0;
+        self.moves_since_lock_delay = 0;
+        self.fall_timer_ms = 0;
+
+        if !self.is_valid_position(&self.current_piece) {
+            self.is_game_over = true;
+        }
 
         Some((is_swap, current_type, new_type))
     }
@@ -652,11 +695,13 @@ impl GameState {
         cleared
     }
 
-    pub fn use_item(&mut self) -> Option<ItemType> {
+    pub fn use_item(&mut self) -> Option<ItemUseResult> {
         let item = self
             .inventory
             .take()
             .or_else(|| self.current_piece.item.take())?;
+
+        let mut lines_cleared = 0;
 
         match item {
             ItemType::Magnet => {
@@ -680,7 +725,16 @@ impl GameState {
                     self.total_lines += cleared;
                     self.level = 1 + (self.total_lines / 10);
                     self.score += 100 * cleared * cleared * self.level;
+                    let charge = match cleared {
+                        1 => 10,
+                        2 => 20,
+                        3 => 30,
+                        4 => 50,
+                        _ => 0,
+                    };
+                    self.zone_meter = (self.zone_meter + charge).min(100);
                 }
+                lines_cleared = cleared;
             }
             ItemType::Nuke => {
                 for y in (0..BOARD_HEIGHT - 4).rev() {
@@ -709,7 +763,10 @@ impl GameState {
             }
         }
 
-        Some(item)
+        Some(ItemUseResult {
+            item,
+            lines_cleared,
+        })
     }
 
     pub fn get_topography(&self) -> Vec<u32> {
@@ -881,7 +938,13 @@ mod tests {
             gs.board[BOARD_HEIGHT - 1][x] = Some(TetrominoType::I);
         }
         let used = gs.use_item();
-        assert_eq!(used, Some(ItemType::Nuke));
+        assert_eq!(
+            used,
+            Some(ItemUseResult {
+                item: ItemType::Nuke,
+                lines_cleared: 0
+            })
+        );
 
         gs.inventory = Some(ItemType::Magnet);
         gs.board[10][0] = Some(TetrominoType::O);
@@ -902,7 +965,13 @@ mod tests {
         gs.board[10][0] = Some(TetrominoType::O);
 
         let used = gs.use_item();
-        assert_eq!(used, Some(ItemType::Magnet));
+        assert_eq!(
+            used,
+            Some(ItemUseResult {
+                item: ItemType::Magnet,
+                lines_cleared: 0
+            })
+        );
         assert!(gs.current_piece.item.is_none());
         assert!(gs.board[BOARD_HEIGHT - 1][0].is_some());
     }
@@ -927,10 +996,10 @@ mod tests {
     }
 
     #[test]
-    fn test_magnet_line_clearing() {
+    fn test_magnet_line_clearing_and_zone_charge() {
         let mut gs = GameState::new(Difficulty::Easy);
         gs.inventory = Some(ItemType::Magnet);
-        // Fill row 18 with 9 blocks and row 17 with 1 block at the missing column (x=4)
+        // Fill row 19 with 9 blocks and row 18 with 1 block at the missing column (x=4)
         for x in 0..BOARD_WIDTH {
             if x != 4 {
                 gs.board[BOARD_HEIGHT - 1][x] = Some(TetrominoType::I);
@@ -940,10 +1009,16 @@ mod tests {
 
         let initial_lines = gs.total_lines;
         let used = gs.use_item();
-        assert_eq!(used, Some(ItemType::Magnet));
-        // Magnet pulled the block at (4, 18) down to (4, 19), completing the row and clearing it
+        assert_eq!(
+            used,
+            Some(ItemUseResult {
+                item: ItemType::Magnet,
+                lines_cleared: 1
+            })
+        );
         assert_eq!(gs.total_lines, initial_lines + 1);
         assert!(gs.score > 0);
+        assert_eq!(gs.zone_meter, 10);
     }
 
     #[test]
@@ -988,5 +1063,115 @@ mod tests {
 
         let o_piece = Tetromino::new(TetrominoType::O);
         assert_eq!(o_piece.width(), 2);
+    }
+
+    #[test]
+    fn test_lock_delay_move_and_rotation_resets() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.current_piece = Tetromino::new(TetrominoType::T);
+        gs.current_piece.y = 18; // At floor
+        gs.lock_delay_active = true;
+        gs.lock_delay_timer_ms = 200;
+        gs.moves_since_lock_delay = 0;
+
+        // Move horizontally while on floor -> timer resets to 500ms
+        assert!(gs.move_piece(1, 0));
+        assert!(gs.lock_delay_active);
+        assert_eq!(gs.lock_delay_timer_ms, 500);
+        assert_eq!(gs.moves_since_lock_delay, 1);
+
+        // Rotate while on floor -> timer resets to 500ms
+        gs.lock_delay_timer_ms = 100;
+        assert!(gs.rotate_piece());
+        assert!(gs.lock_delay_active);
+        assert_eq!(gs.lock_delay_timer_ms, 500);
+        assert_eq!(gs.moves_since_lock_delay, 2);
+    }
+
+    #[test]
+    fn test_lock_delay_cancelled_when_falling_off_ledge() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.current_piece = Tetromino::new(TetrominoType::O);
+        // Build a ledge at columns 0..4, row 15
+        for x in 0..5 {
+            gs.board[15][x] = Some(TetrominoType::I);
+        }
+        // Place piece on top of the ledge (y = 13 for O-piece)
+        gs.current_piece.x = 0;
+        gs.current_piece.y = 13;
+        assert!(!gs.can_fall());
+
+        gs.lock_delay_active = true;
+        gs.lock_delay_timer_ms = 300;
+
+        // Move piece right to x = 4 (blocks at x=5, 6, above empty space)
+        assert!(gs.move_piece(4, 0));
+        assert!(gs.can_fall());
+        // Lock delay must be cancelled so piece can fall
+        assert!(!gs.lock_delay_active);
+        assert_eq!(gs.lock_delay_timer_ms, 0);
+        assert_eq!(gs.moves_since_lock_delay, 0);
+    }
+
+    #[test]
+    fn test_hold_resets_lock_delay_state_and_detects_game_over() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.lock_delay_active = true;
+        gs.lock_delay_timer_ms = 100;
+        gs.moves_since_lock_delay = 5;
+        gs.fall_timer_ms = 400;
+
+        let res = gs.hold();
+        assert!(res.is_some());
+        assert!(!gs.lock_delay_active);
+        assert_eq!(gs.lock_delay_timer_ms, 0);
+        assert_eq!(gs.moves_since_lock_delay, 0);
+        assert_eq!(gs.fall_timer_ms, 0);
+        assert!(!gs.is_game_over);
+
+        // Test topout detection on hold
+        let mut gs2 = GameState::new(Difficulty::Easy);
+        // Block the spawn area
+        for x in 0..BOARD_WIDTH {
+            gs2.board[0][x] = Some(TetrominoType::I);
+            gs2.board[1][x] = Some(TetrominoType::I);
+        }
+        gs2.hold();
+        assert!(gs2.is_game_over);
+    }
+
+    #[test]
+    fn test_t_spin_zero_clear_awards_points() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.current_piece = Tetromino::new(TetrominoType::T);
+        gs.current_piece.x = 3;
+        gs.current_piece.y = 17;
+        gs.last_move_was_spin = true;
+
+        let x = gs.current_piece.x as usize;
+        let y = gs.current_piece.y as usize;
+        gs.board[y][x] = Some(TetrominoType::O);
+        gs.board[y][x + 2] = Some(TetrominoType::O);
+        gs.board[y + 2][x] = Some(TetrominoType::O);
+
+        let initial_score = gs.score;
+        let res = gs.lock_piece();
+        assert!(res.is_t_spin);
+        assert_eq!(res.cleared_lines, 0);
+        assert_eq!(gs.score, initial_score + 400 * gs.level);
+    }
+
+    #[test]
+    fn test_zone_mode_lines_count_toward_total_lines_and_level() {
+        let mut gs = GameState::new(Difficulty::Easy);
+        gs.zone_meter = 100;
+        assert!(gs.start_zone());
+
+        gs.zone_lines_cleared = 12;
+        let initial_total_lines = gs.total_lines;
+        let cleared = gs.end_zone();
+        assert_eq!(cleared, 12);
+        assert_eq!(gs.total_lines, initial_total_lines + 12);
+        assert_eq!(gs.level, 2); // 1 + 12 / 10 = 2
     }
 }

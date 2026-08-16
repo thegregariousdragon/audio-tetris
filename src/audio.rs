@@ -241,7 +241,9 @@ impl AudioEngine {
         let handle = self.stream_handle.clone();
         let vol = *self.sfx_volume.lock().unwrap() * vol_multiplier;
         thread::spawn(move || {
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
             let source = rodio::source::SineWave::new(freq)
                 .take_duration(Duration::from_millis(duration_ms))
                 .amplify(vol);
@@ -257,7 +259,9 @@ impl AudioEngine {
         let vol = *self.sfx_volume.lock().unwrap() * vol_multiplier;
         thread::spawn(move || {
             let source = make_panned_sine(freq, duration_ms, pan, vol);
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
             sink.append(source);
             sink.sleep_until_end();
         });
@@ -277,9 +281,14 @@ impl AudioEngine {
 
     /// Horizontal movement (left/right).
     /// Light quick tick, stereo-panned by column position.
-    /// Column 0 = hard left (-1.0), column 9 = hard right (+1.0).
-    pub fn play_horizontal_move_sound(&self, x: i32) {
-        let pan = (x as f32 / 9.0) * 2.0 - 1.0; // maps 0..9 to -1.0..+1.0
+    /// Column 1 (or 0) = hard left (-1.0), column 10 (or 9) = hard right (+1.0).
+    pub fn play_horizontal_move_sound(&self, col: i32) {
+        let normalized = if (1..=10).contains(&col) {
+            col - 1
+        } else {
+            col.clamp(0, 9)
+        };
+        let pan = (normalized as f32 / 9.0) * 2.0 - 1.0;
         self.play_panned_sine(600.0, 25, pan, 1.0);
     }
 
@@ -289,7 +298,9 @@ impl AudioEngine {
         let handle = self.stream_handle.clone();
         let vol = *self.sfx_volume.lock().unwrap() * 1.5;
         thread::spawn(move || {
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
             // Layer two frequencies for a thick impact
             let fundamental = rodio::source::SineWave::new(80.0)
                 .take_duration(Duration::from_millis(200))
@@ -300,7 +311,9 @@ impl AudioEngine {
             // Mix by appending to sink (they play sequentially, so use a second sink)
             sink.append(fundamental);
             // Use a second sink for the harmonic overlay
-            let sink2 = Sink::try_new(&handle).unwrap();
+            let Ok(sink2) = Sink::try_new(&handle) else {
+                return;
+            };
             sink2.append(harmonic);
             sink.sleep_until_end();
             sink2.sleep_until_end();
@@ -324,14 +337,18 @@ impl AudioEngine {
         let offset = y as f32 * 3.0; // subtle height context
         thread::spawn(move || {
             // Note 1: C4 (261.63 Hz)
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
             let note1 = rodio::source::SineWave::new(261.63 - offset)
                 .take_duration(Duration::from_millis(60))
                 .amplify(vol);
             sink.append(note1);
             sink.sleep_until_end();
             // Note 2: G4 (392.00 Hz)
-            let sink2 = Sink::try_new(&handle).unwrap();
+            let Ok(sink2) = Sink::try_new(&handle) else {
+                return;
+            };
             let note2 = rodio::source::SineWave::new(392.00 - offset)
                 .take_duration(Duration::from_millis(60))
                 .amplify(vol);
@@ -347,14 +364,18 @@ impl AudioEngine {
         let offset = y as f32 * 3.0;
         thread::spawn(move || {
             // Note 1: G4 (392.00 Hz)
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
             let note1 = rodio::source::SineWave::new(392.00 - offset)
                 .take_duration(Duration::from_millis(60))
                 .amplify(vol);
             sink.append(note1);
             sink.sleep_until_end();
             // Note 2: C4 (261.63 Hz)
-            let sink2 = Sink::try_new(&handle).unwrap();
+            let Ok(sink2) = Sink::try_new(&handle) else {
+                return;
+            };
             let note2 = rodio::source::SineWave::new(261.63 - offset)
                 .take_duration(Duration::from_millis(60))
                 .amplify(vol);
@@ -376,7 +397,9 @@ impl AudioEngine {
             let steps = 8;
             for i in 0..steps {
                 let freq = 200.0 + (200.0 * (i as f32 / steps as f32));
-                let sink = Sink::try_new(&handle).unwrap();
+                let Ok(sink) = Sink::try_new(&handle) else {
+                    continue;
+                };
                 let source = rodio::source::SineWave::new(freq)
                     .take_duration(Duration::from_millis(10))
                     .amplify(vol);
@@ -395,7 +418,9 @@ impl AudioEngine {
             let steps = 6;
             for i in 0..steps {
                 let freq = 300.0 + (200.0 * (i as f32 / steps as f32));
-                let sink = Sink::try_new(&handle).unwrap();
+                let Ok(sink) = Sink::try_new(&handle) else {
+                    continue;
+                };
                 let source = rodio::source::SineWave::new(freq)
                     .take_duration(Duration::from_millis(10))
                     .amplify(vol);
@@ -403,7 +428,9 @@ impl AudioEngine {
                 sink.sleep_until_end();
             }
             // Phase 2: sharp clack — 250 Hz snap
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
             let source = rodio::source::SineWave::new(250.0)
                 .take_duration(Duration::from_millis(40))
                 .amplify(vol * 1.3);
@@ -430,9 +457,15 @@ impl AudioEngine {
             match lines {
                 1 => {
                     // Single: major triad chord (C5 + E5 + G5 simultaneously)
-                    let sink_c = Sink::try_new(&handle).unwrap();
-                    let sink_e = Sink::try_new(&handle).unwrap();
-                    let sink_g = Sink::try_new(&handle).unwrap();
+                    let Ok(sink_c) = Sink::try_new(&handle) else {
+                        return;
+                    };
+                    let Ok(sink_e) = Sink::try_new(&handle) else {
+                        return;
+                    };
+                    let Ok(sink_g) = Sink::try_new(&handle) else {
+                        return;
+                    };
                     sink_c.append(
                         rodio::source::SineWave::new(523.25)
                             .take_duration(Duration::from_millis(250))
@@ -454,7 +487,9 @@ impl AudioEngine {
                     // Double: 3-note ascending arpeggio C5 → E5 → G5
                     let notes = [523.25, 659.25, 783.99];
                     for freq in notes {
-                        let sink = Sink::try_new(&handle).unwrap();
+                        let Ok(sink) = Sink::try_new(&handle) else {
+                            continue;
+                        };
                         sink.append(
                             rodio::source::SineWave::new(freq)
                                 .take_duration(Duration::from_millis(60))
@@ -467,7 +502,9 @@ impl AudioEngine {
                     // Triple: 4-note ascending arpeggio C5 → E5 → G5 → C6
                     let notes = [523.25, 659.25, 783.99, 1046.50];
                     for freq in notes {
-                        let sink = Sink::try_new(&handle).unwrap();
+                        let Ok(sink) = Sink::try_new(&handle) else {
+                            continue;
+                        };
                         sink.append(
                             rodio::source::SineWave::new(freq)
                                 .take_duration(Duration::from_millis(60))
@@ -480,7 +517,9 @@ impl AudioEngine {
                     // Tetris! Rapid chiptune fanfare: C5 → D5 → E5 → G5 → A5 → C6
                     let notes = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
                     for freq in notes {
-                        let sink = Sink::try_new(&handle).unwrap();
+                        let Ok(sink) = Sink::try_new(&handle) else {
+                            continue;
+                        };
                         sink.append(
                             rodio::source::SineWave::new(freq)
                                 .take_duration(Duration::from_millis(40))
@@ -537,7 +576,9 @@ impl AudioEngine {
         let handle = self.stream_handle.clone();
         let vol = *self.sfx_volume.lock().unwrap() * 0.75;
         thread::spawn(move || {
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
             let source = rodio::source::SineWave::new(1200.0)
                 .take_duration(Duration::from_millis(50))
                 .amplify(vol);
@@ -551,7 +592,9 @@ impl AudioEngine {
         let handle = self.stream_handle.clone();
         let vol = *self.sfx_volume.lock().unwrap();
         thread::spawn(move || {
-            let sink = Sink::try_new(&handle).unwrap();
+            let Ok(sink) = Sink::try_new(&handle) else {
+                return;
+            };
 
             let base_freq = match t_type {
                 TetrominoType::I => 440.0,
@@ -589,7 +632,9 @@ impl AudioEngine {
                 let pan = (i as f32 / 9.0) * 2.0 - 1.0;
                 let source = make_panned_sine(freq, 80, pan, vol);
 
-                let sink = Sink::try_new(&handle).unwrap();
+                let Ok(sink) = Sink::try_new(&handle) else {
+                    continue;
+                };
                 sink.append(source);
                 sink.sleep_until_end();
             }
