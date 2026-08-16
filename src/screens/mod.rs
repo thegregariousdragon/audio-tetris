@@ -8,6 +8,8 @@ pub mod main_menu;
 pub mod pause_menu;
 pub mod save_screen;
 pub mod settings_screen;
+pub mod tutorial_prompt;
+pub mod tutorial_screen;
 pub mod update_screen;
 
 use crate::updater::{UpdateInfo, UpdateStatus};
@@ -15,6 +17,7 @@ use crate::updater::{UpdateInfo, UpdateStatus};
 #[derive(Clone, PartialEq, Debug)]
 pub enum ConfirmAction {
     NewGame,
+    StartTutorial,
     AbandonGame,
     QuitApp,
     UpdateApp(UpdateInfo),
@@ -22,6 +25,10 @@ pub enum ConfirmAction {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AppScreen {
+    TutorialPrompt,
+    Tutorial {
+        stage: usize,
+    },
     MainMenu {
         selection: usize,
     },

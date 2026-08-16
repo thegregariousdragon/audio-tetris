@@ -5,10 +5,11 @@ use wxdragon::prelude::*;
 
 use crate::audio::AudioEngine;
 use crate::db::Database;
-use crate::logic::GameState;
+use crate::logic::{GameState, ItemType, Tetromino, TetrominoType};
 use crate::screens::{
     AppScreen, ConfirmAction, about_screen, confirm_dialog, how_to_play, in_game_screen,
-    leaderboard, load_screen, main_menu, pause_menu, save_screen, settings_screen, update_screen,
+    leaderboard, load_screen, main_menu, pause_menu, save_screen, settings_screen, tutorial_prompt,
+    tutorial_screen, update_screen,
 };
 use crate::settings::{Difficulty, Settings};
 use crate::updater::{self, UpdateStatus};
@@ -75,6 +76,7 @@ pub struct AppFrame {
     screen: Arc<Mutex<AppScreen>>,
     game_in_progress: Arc<Mutex<bool>>,
     db: Arc<Database>,
+    tutorial_state: Arc<Mutex<tutorial_screen::TutorialState>>,
 }
 
 impl AppFrame {
@@ -84,10 +86,17 @@ impl AppFrame {
 
         let settings_data = Settings::load();
         let settings = Arc::new(Mutex::new(settings_data.clone()));
-        let screen = Arc::new(Mutex::new(AppScreen::MainMenu { selection: 0 }));
-        let game_in_progress = Arc::new(Mutex::new(false));
 
         let db = Arc::new(Database::new("audio_tetris.db").expect("Failed to initialize database"));
+        let has_saves = db.get_all_save_slots().iter().any(|s| s.is_some());
+        let initial_screen = if !settings_data.tutorial_completed && !has_saves {
+            AppScreen::TutorialPrompt
+        } else {
+            AppScreen::MainMenu { selection: 0 }
+        };
+        let screen = Arc::new(Mutex::new(initial_screen));
+        let game_in_progress = Arc::new(Mutex::new(false));
+        let tutorial_state = Arc::new(Mutex::new(tutorial_screen::TutorialState::new(1)));
 
         let title = format!("Audio Tetris v{}", env!("APP_VERSION"));
         let frame = Frame::builder()
@@ -123,6 +132,7 @@ impl AppFrame {
             screen,
             game_in_progress,
             db,
+            tutorial_state,
         };
 
         if settings_data.check_for_updates {
@@ -169,6 +179,11 @@ impl AppFrame {
         let in_prog = *self.game_in_progress.lock().unwrap();
 
         let (display_text, spoken_text) = match screen {
+            AppScreen::TutorialPrompt => tutorial_prompt::render_tutorial_prompt(),
+            AppScreen::Tutorial { .. } => {
+                let ts = self.tutorial_state.lock().unwrap();
+                tutorial_screen::render_tutorial(&ts)
+            }
             AppScreen::MainMenu { selection } => main_menu::render_main_menu(selection, in_prog),
             AppScreen::PauseMenu { selection } => pause_menu::render_pause_menu(selection),
             AppScreen::SaveScreen { selection } => {
@@ -226,6 +241,7 @@ impl AppFrame {
         let screen_state = self.screen.clone();
         let game_in_progress = self.game_in_progress.clone();
         let db = self.db.clone();
+        let tutorial_state = self.tutorial_state.clone();
         let frame = self.frame;
 
         let render_in_closure = {
@@ -235,6 +251,7 @@ impl AppFrame {
             let game_in_progress = game_in_progress.clone();
             let tolk = tolk_instance.clone();
             let db = db.clone();
+            let tutorial_state = tutorial_state.clone();
 
             move |speak: bool, initial_load: bool| {
                 let screen = screen_state.lock().unwrap().clone();
@@ -242,6 +259,11 @@ impl AppFrame {
                 let in_prog = *game_in_progress.lock().unwrap();
 
                 let (display_text, spoken_text) = match screen {
+                    AppScreen::TutorialPrompt => tutorial_prompt::render_tutorial_prompt(),
+                    AppScreen::Tutorial { .. } => {
+                        let ts = tutorial_state.lock().unwrap();
+                        tutorial_screen::render_tutorial(&ts)
+                    }
                     AppScreen::MainMenu { selection } => main_menu::render_main_menu(selection, in_prog),
                     AppScreen::PauseMenu { selection } => pause_menu::render_pause_menu(selection),
                     AppScreen::SaveScreen { selection } => {
@@ -396,6 +418,421 @@ impl AppFrame {
                 }
 
                 match current_screen {
+                    AppScreen::TutorialPrompt => match action {
+                        InputAction::Select => {
+                            audio_engine.play_menu_select();
+                            *screen_state.lock().unwrap() = AppScreen::Tutorial { stage: 1 };
+                            *tutorial_state.lock().unwrap() =
+                                tutorial_screen::TutorialState::new(1);
+                            is_initial_load = true;
+                            screen_changed = true;
+                        }
+                        InputAction::Back => {
+                            audio_engine.play_menu_select();
+                            {
+                                let mut s = settings.lock().unwrap();
+                                s.tutorial_completed = true;
+                                s.save();
+                            }
+                            *screen_state.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
+                            tolk.output("Main Menu.", true);
+                            screen_changed = true;
+                        }
+                        _ => {}
+                    },
+                    AppScreen::Tutorial {
+                        stage: current_stage,
+                    } => {
+                        let mut ts = tutorial_state.lock().unwrap();
+                        match action {
+                            InputAction::Back => {
+                                audio_engine.play_menu_select();
+                                tolk.output("Tutorial Exited. Main Menu.", true);
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::MainMenu { selection: 0 };
+                                screen_changed = true;
+                            }
+                            InputAction::Left => {
+                                if current_stage == 1 {
+                                    if ts.game_state.move_left() {
+                                        audio_engine.play_horizontal_move_sound(
+                                            ts.game_state.current_piece.x,
+                                        );
+                                        if ts.game_state.current_piece.x == 0 {
+                                            ts.reached_left = true;
+                                            audio_engine.play_aligned_sound();
+                                            tolk.output("Left wall, Column 1 reached!", true);
+                                        } else {
+                                            tolk.output(
+                                                format!(
+                                                    "Left, Column {}",
+                                                    ts.game_state.current_piece.x + 1
+                                                ),
+                                                true,
+                                            );
+                                        }
+                                        if ts.reached_left && ts.reached_right {
+                                            ts.stage = 2;
+                                            ts.init_stage_board();
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Tutorial { stage: 2 };
+                                            audio_engine.play_menu_select();
+                                            tolk.output(
+                                                "Lesson 1 complete! Both edges reached. Advancing to Lesson 2.",
+                                                true,
+                                            );
+                                            is_initial_load = true;
+                                        }
+                                    } else {
+                                        audio_engine.play_aligned_sound();
+                                    }
+                                    screen_changed = true;
+                                } else if current_stage == 5 {
+                                    if ts.game_state.move_left() {
+                                        audio_engine.play_horizontal_move_sound(
+                                            ts.game_state.current_piece.x,
+                                        );
+                                        tolk.output(
+                                            format!(
+                                                "Left, Column {}",
+                                                ts.game_state.current_piece.left_column()
+                                            ),
+                                            true,
+                                        );
+                                    }
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::Right => {
+                                if current_stage == 1 {
+                                    if ts.game_state.move_right() {
+                                        audio_engine.play_horizontal_move_sound(
+                                            ts.game_state.current_piece.x,
+                                        );
+                                        if ts.game_state.current_piece.right_column() == 10 {
+                                            ts.reached_right = true;
+                                            audio_engine.play_aligned_sound();
+                                            tolk.output("Right wall, Column 10 reached!", true);
+                                        } else {
+                                            tolk.output(
+                                                format!(
+                                                    "Right, Column {}",
+                                                    ts.game_state.current_piece.x + 1
+                                                ),
+                                                true,
+                                            );
+                                        }
+                                        if ts.reached_left && ts.reached_right {
+                                            ts.stage = 2;
+                                            ts.init_stage_board();
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Tutorial { stage: 2 };
+                                            audio_engine.play_menu_select();
+                                            tolk.output(
+                                                "Lesson 1 complete! Both edges reached. Advancing to Lesson 2.",
+                                                true,
+                                            );
+                                            is_initial_load = true;
+                                        }
+                                    } else {
+                                        audio_engine.play_aligned_sound();
+                                    }
+                                    screen_changed = true;
+                                } else if current_stage == 5 {
+                                    if ts.game_state.move_right() {
+                                        audio_engine.play_horizontal_move_sound(
+                                            ts.game_state.current_piece.x,
+                                        );
+                                        tolk.output(
+                                            format!(
+                                                "Right, Column {}",
+                                                ts.game_state.current_piece.left_column()
+                                            ),
+                                            true,
+                                        );
+                                    }
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::Down => {
+                                if current_stage == 2 {
+                                    if ts.game_state.soft_drop() {
+                                        audio_engine
+                                            .play_soft_drop_sound(ts.game_state.current_piece.y);
+                                        ts.soft_drops += 1;
+                                        tolk.output(
+                                            format!(
+                                                "Soft drop, Row {}",
+                                                ts.game_state.current_piece.y + 1
+                                            ),
+                                            true,
+                                        );
+                                    }
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::HardDrop => {
+                                if current_stage == 2 {
+                                    audio_engine.play_hard_drop_sound();
+                                    ts.game_state.hard_drop();
+                                    ts.stage = 3;
+                                    ts.init_stage_board();
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::Tutorial { stage: 3 };
+                                    audio_engine.play_menu_select();
+                                    tolk.output(
+                                        "Lesson 2 complete! Great landing impact. Advancing to Lesson 3.",
+                                        true,
+                                    );
+                                    is_initial_load = true;
+                                    screen_changed = true;
+                                } else if current_stage == 3 {
+                                    audio_engine.play_hard_drop_sound();
+                                    ts.stage = 4;
+                                    ts.init_stage_board();
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::Tutorial { stage: 4 };
+                                    audio_engine.play_menu_select();
+                                    tolk.output(
+                                        "Lesson 3 complete! Rotation mastered. Advancing to Lesson 4.",
+                                        true,
+                                    );
+                                    is_initial_load = true;
+                                    screen_changed = true;
+                                } else if current_stage == 4 {
+                                    audio_engine.play_hard_drop_sound();
+                                    ts.stage = 5;
+                                    ts.sub_step = 0;
+                                    ts.init_stage_board();
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::Tutorial { stage: 5 };
+                                    audio_engine.play_menu_select();
+                                    tolk.output(
+                                        "Lesson 4 complete! Hold slot mastered. Advancing to Lesson 5.",
+                                        true,
+                                    );
+                                    is_initial_load = true;
+                                    screen_changed = true;
+                                } else if current_stage == 5 {
+                                    if ts.sub_step == 0 {
+                                        audio_engine.play_hard_drop_sound();
+                                        audio_engine.play_clear_sound(1);
+                                        ts.sub_step = 1;
+                                        ts.init_stage_board();
+                                        tolk.output(
+                                            "Single line cleared! Now Part 2: Drop your Long Bar down Column 10 for the 4-line Tetris Fanfare!",
+                                            true,
+                                        );
+                                        is_initial_load = true;
+                                    } else {
+                                        audio_engine.play_hard_drop_sound();
+                                        audio_engine.play_clear_sound(4);
+                                        ts.stage = 6;
+                                        ts.init_stage_board();
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::Tutorial { stage: 6 };
+                                        audio_engine.play_menu_select();
+                                        tolk.output(
+                                            "Tetris! 4-line clear achieved. Advancing to Lesson 6.",
+                                            true,
+                                        );
+                                        is_initial_load = true;
+                                    }
+                                    screen_changed = true;
+                                } else if current_stage == 6 {
+                                    ts.stage = 7;
+                                    ts.init_stage_board();
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::Tutorial { stage: 7 };
+                                    audio_engine.play_menu_select();
+                                    tolk.output("Lesson 6 complete! Advancing to Lesson 7.", true);
+                                    is_initial_load = true;
+                                    screen_changed = true;
+                                } else if current_stage == 7 {
+                                    audio_engine.play_hard_drop_sound();
+                                    audio_engine.play_clear_sound(2);
+                                    ts.stage = 8;
+                                    ts.init_stage_board();
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::Tutorial { stage: 8 };
+                                    audio_engine.play_menu_select();
+                                    tolk.output(
+                                        "Lesson 7 complete! Zone combo cleared. Advancing to Lesson 8.",
+                                        true,
+                                    );
+                                    is_initial_load = true;
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::PieceInfo => {
+                                if current_stage == 3 {
+                                    ts.inspected = true;
+                                    tolk.output(
+                                        format!(
+                                            "Current piece: T-shape. Columns {} through {}. Width: {}.",
+                                            ts.game_state.current_piece.left_column(),
+                                            ts.game_state.current_piece.right_column(),
+                                            ts.game_state.current_piece.width()
+                                        ),
+                                        true,
+                                    );
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::RotateRight => {
+                                if current_stage == 3 {
+                                    if ts.game_state.rotate_cw() {
+                                        ts.rotated_cw = true;
+                                        audio_engine
+                                            .play_rotate_cw_sound(ts.game_state.current_piece.y);
+                                        tolk.output(
+                                            format!(
+                                                "Rotated Right clockwise. Columns {} through {}",
+                                                ts.game_state.current_piece.left_column(),
+                                                ts.game_state.current_piece.right_column()
+                                            ),
+                                            true,
+                                        );
+                                    }
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::RotateLeft => {
+                                if current_stage == 3 {
+                                    if ts.game_state.rotate_ccw() {
+                                        ts.rotated_ccw = true;
+                                        audio_engine
+                                            .play_rotate_ccw_sound(ts.game_state.current_piece.y);
+                                        tolk.output(
+                                            format!(
+                                                "Rotated Left counter-clockwise. Columns {} through {}",
+                                                ts.game_state.current_piece.left_column(),
+                                                ts.game_state.current_piece.right_column()
+                                            ),
+                                            true,
+                                        );
+                                    }
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::Hold => {
+                                if current_stage == 4 {
+                                    if !ts.held_first {
+                                        ts.held_first = true;
+                                        audio_engine.play_hold_sound();
+                                        ts.game_state.hold_piece = Some(TetrominoType::S);
+                                        ts.game_state.current_piece =
+                                            Tetromino::new(TetrominoType::I);
+                                        tolk.output(
+                                            "Held Right zig-zag. New piece: Long bar. Press C or Slash again to swap back.",
+                                            true,
+                                        );
+                                        audio_engine
+                                            .play_spawn_sound(ts.game_state.current_piece.t_type);
+                                    } else if !ts.swapped_back {
+                                        ts.swapped_back = true;
+                                        audio_engine.play_hold_swap_sound();
+                                        ts.game_state.hold_piece = Some(TetrominoType::I);
+                                        ts.game_state.current_piece =
+                                            Tetromino::new(TetrominoType::S);
+                                        tolk.output(
+                                            "Swapped back! Now press C or Slash once more this turn to hear the hold-denied cue.",
+                                            true,
+                                        );
+                                        audio_engine
+                                            .play_spawn_sound(ts.game_state.current_piece.t_type);
+                                    } else {
+                                        ts.tried_denied = true;
+                                        audio_engine.play_hold_denied_sound();
+                                        tolk.output(
+                                            "Already held piece this turn. Now press Spacebar to drop and advance.",
+                                            true,
+                                        );
+                                    }
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::Radar => {
+                                if current_stage == 6 {
+                                    ts.radar_scanned = true;
+                                    audio_engine.play_radar_sweep(ts.game_state.get_topography());
+                                    tolk.output(
+                                        "Radar sweep complete: highest stack height 8 in Column 9. Press Spacebar or Enter to continue.",
+                                        true,
+                                    );
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::Zone => {
+                                if current_stage == 7 {
+                                    ts.zone_entered = true;
+                                    audio_engine.play_zone_enter();
+                                    tolk.output(
+                                        "Zone Mode Activated! Gravity is frozen. Press Spacebar to drop your piece and clear rows.",
+                                        true,
+                                    );
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::UseItem => {
+                                if current_stage == 8 {
+                                    if ts.item_step == 0 {
+                                        audio_engine.play_item_use(ItemType::Magnet);
+                                        ts.item_step = 1;
+                                        audio_engine.play_item_acquire();
+                                        tolk.output(
+                                            "Magnet pulled blocks down! Next: The Laser. Press Shift to fire.",
+                                            true,
+                                        );
+                                    } else if ts.item_step == 1 {
+                                        audio_engine.play_item_use(ItemType::Laser);
+                                        ts.item_step = 2;
+                                        audio_engine.play_item_acquire();
+                                        tolk.output(
+                                            "Laser incinerated bottom rows! Final item: The Nuke. Press Shift to detonate.",
+                                            true,
+                                        );
+                                    } else {
+                                        audio_engine.play_item_use(ItemType::Nuke);
+                                        ts.stage = 9;
+                                        *screen_state.lock().unwrap() =
+                                            AppScreen::Tutorial { stage: 9 };
+                                        audio_engine.play_menu_select();
+                                        tolk.output(
+                                            "Nuke demolished the entire stack! Tutorial Complete. Advancing to Graduation.",
+                                            true,
+                                        );
+                                        is_initial_load = true;
+                                    }
+                                    screen_changed = true;
+                                }
+                            }
+                            InputAction::Select => {
+                                if current_stage == 6 {
+                                    ts.stage = 7;
+                                    ts.init_stage_board();
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::Tutorial { stage: 7 };
+                                    audio_engine.play_menu_select();
+                                    tolk.output("Lesson 6 complete! Advancing to Lesson 7.", true);
+                                    is_initial_load = true;
+                                    screen_changed = true;
+                                } else if current_stage == 9 {
+                                    audio_engine.play_menu_select();
+                                    {
+                                        let mut s = settings.lock().unwrap();
+                                        s.tutorial_completed = true;
+                                        s.save();
+                                    }
+                                    tolk.output("Main Menu.", true);
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::MainMenu { selection: 0 };
+                                    screen_changed = true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                     AppScreen::MainMenu { selection } => {
                         let in_prog = *game_in_progress.lock().unwrap();
                         let options_count = main_menu::get_main_menu_options(in_prog).len();
@@ -439,37 +876,43 @@ impl AppFrame {
                                         }
                                         2 => {
                                             *screen_state.lock().unwrap() =
-                                                AppScreen::SaveScreen { selection: 0 };
+                                                AppScreen::ConfirmDialog {
+                                                    action: ConfirmAction::StartTutorial,
+                                                };
                                         }
                                         3 => {
                                             *screen_state.lock().unwrap() =
-                                                AppScreen::LoadScreen { selection: 0 };
+                                                AppScreen::SaveScreen { selection: 0 };
                                         }
                                         4 => {
                                             *screen_state.lock().unwrap() =
-                                                AppScreen::Leaderboard { selection: 0 };
+                                                AppScreen::LoadScreen { selection: 0 };
                                         }
                                         5 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Leaderboard { selection: 0 };
+                                        }
+                                        6 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::HowToPlay { scroll_line: 0 };
                                             is_initial_load = true;
                                         }
-                                        6 => {
+                                        7 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::Settings { selection: 0 };
                                         }
-                                        7 => {
+                                        8 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::About { scroll_line: 0 };
                                             is_initial_load = true;
                                         }
-                                        8 => {
+                                        9 => {
                                             *screen_state.lock().unwrap() = AppScreen::Update {
                                                 selection: 0,
                                                 status: UpdateStatus::Idle,
                                             };
                                         }
-                                        9 => {
+                                        10 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::ConfirmDialog {
                                                     action: ConfirmAction::QuitApp,
@@ -499,33 +942,40 @@ impl AppFrame {
                                         }
                                         1 => {
                                             *screen_state.lock().unwrap() =
-                                                AppScreen::LoadScreen { selection: 0 };
+                                                AppScreen::Tutorial { stage: 1 };
+                                            *tutorial_state.lock().unwrap() =
+                                                tutorial_screen::TutorialState::new(1);
+                                            is_initial_load = true;
                                         }
                                         2 => {
                                             *screen_state.lock().unwrap() =
-                                                AppScreen::Leaderboard { selection: 0 };
+                                                AppScreen::LoadScreen { selection: 0 };
                                         }
                                         3 => {
+                                            *screen_state.lock().unwrap() =
+                                                AppScreen::Leaderboard { selection: 0 };
+                                        }
+                                        4 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::HowToPlay { scroll_line: 0 };
                                             is_initial_load = true;
                                         }
-                                        4 => {
+                                        5 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::Settings { selection: 0 };
                                         }
-                                        5 => {
+                                        6 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::About { scroll_line: 0 };
                                             is_initial_load = true;
                                         }
-                                        6 => {
+                                        7 => {
                                             *screen_state.lock().unwrap() = AppScreen::Update {
                                                 selection: 0,
                                                 status: UpdateStatus::Idle,
                                             };
                                         }
-                                        7 => {
+                                        8 => {
                                             *screen_state.lock().unwrap() =
                                                 AppScreen::ConfirmDialog {
                                                     action: ConfirmAction::QuitApp,
@@ -700,7 +1150,7 @@ impl AppFrame {
                                         AppScreen::PauseMenu { selection: 2 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 1 };
+                                        AppScreen::MainMenu { selection: 2 };
                                 }
                             }
                             screen_changed = true;
@@ -713,7 +1163,7 @@ impl AppFrame {
                                     AppScreen::PauseMenu { selection: 2 };
                             } else {
                                 *screen_state.lock().unwrap() =
-                                    AppScreen::MainMenu { selection: 1 };
+                                    AppScreen::MainMenu { selection: 2 };
                             }
                             screen_changed = true;
                         }
@@ -752,10 +1202,10 @@ impl AppFrame {
                                     let in_prog = *game_in_progress.lock().unwrap();
                                     if in_prog {
                                         *screen_state.lock().unwrap() =
-                                            AppScreen::MainMenu { selection: 4 };
+                                            AppScreen::MainMenu { selection: 5 };
                                     } else {
                                         *screen_state.lock().unwrap() =
-                                            AppScreen::MainMenu { selection: 2 };
+                                            AppScreen::MainMenu { selection: 3 };
                                     }
                                 } else {
                                     let (_disp, spoken) =
@@ -769,10 +1219,10 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 4 };
+                                        AppScreen::MainMenu { selection: 5 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 2 };
+                                        AppScreen::MainMenu { selection: 3 };
                                 }
                                 screen_changed = true;
                             }
@@ -928,7 +1378,7 @@ impl AppFrame {
                                         AppScreen::PauseMenu { selection: 4 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 4 };
+                                        AppScreen::MainMenu { selection: 5 };
                                 }
                                 screen_changed = true;
                             }
@@ -1021,7 +1471,7 @@ impl AppFrame {
                                         AppScreen::PauseMenu { selection: 3 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 3 };
+                                        AppScreen::MainMenu { selection: 4 };
                                 }
                                 screen_changed = true;
                             }
@@ -1059,10 +1509,10 @@ impl AppFrame {
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 7 };
+                                        AppScreen::MainMenu { selection: 8 };
                                 } else {
                                     *screen_state.lock().unwrap() =
-                                        AppScreen::MainMenu { selection: 5 };
+                                        AppScreen::MainMenu { selection: 6 };
                                 }
                                 screen_changed = true;
                             }
@@ -1185,7 +1635,7 @@ impl AppFrame {
                                     }
                                     (UpdateStatus::Available(_), 2) | (_, 1) => {
                                         let in_prog = *game_in_progress.lock().unwrap();
-                                        let back_sel = if in_prog { 8 } else { 6 };
+                                        let back_sel = if in_prog { 9 } else { 7 };
                                         *screen_state.lock().unwrap() = AppScreen::MainMenu {
                                             selection: back_sel,
                                         };
@@ -1197,7 +1647,7 @@ impl AppFrame {
                             InputAction::Back => {
                                 audio_engine.play_menu_select();
                                 let in_prog = *game_in_progress.lock().unwrap();
-                                let back_sel = if in_prog { 8 } else { 6 };
+                                let back_sel = if in_prog { 9 } else { 7 };
                                 *screen_state.lock().unwrap() = AppScreen::MainMenu {
                                     selection: back_sel,
                                 };
@@ -1220,6 +1670,14 @@ impl AppFrame {
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                     *game_in_progress.lock().unwrap() = true;
                                     *screen_state.lock().unwrap() = AppScreen::InGame;
+                                }
+                                ConfirmAction::StartTutorial => {
+                                    *game_in_progress.lock().unwrap() = false;
+                                    *screen_state.lock().unwrap() =
+                                        AppScreen::Tutorial { stage: 1 };
+                                    *tutorial_state.lock().unwrap() =
+                                        tutorial_screen::TutorialState::new(1);
+                                    is_initial_load = true;
                                 }
                                 ConfirmAction::AbandonGame => {
                                     *game_in_progress.lock().unwrap() = false;
@@ -1256,11 +1714,22 @@ impl AppFrame {
                             audio_engine.play_menu_select();
                             let in_prog = *game_in_progress.lock().unwrap();
                             if in_prog {
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::PauseMenu { selection: 2 };
+                                *screen_state.lock().unwrap() = match confirm_act {
+                                    ConfirmAction::AbandonGame => {
+                                        AppScreen::PauseMenu { selection: 2 }
+                                    }
+                                    ConfirmAction::NewGame => AppScreen::MainMenu { selection: 1 },
+                                    ConfirmAction::StartTutorial => {
+                                        AppScreen::MainMenu { selection: 2 }
+                                    }
+                                    ConfirmAction::QuitApp => AppScreen::MainMenu { selection: 10 },
+                                    _ => AppScreen::PauseMenu { selection: 0 },
+                                };
                             } else {
-                                *screen_state.lock().unwrap() =
-                                    AppScreen::MainMenu { selection: 0 };
+                                *screen_state.lock().unwrap() = match confirm_act {
+                                    ConfirmAction::QuitApp => AppScreen::MainMenu { selection: 8 },
+                                    _ => AppScreen::MainMenu { selection: 0 },
+                                };
                             }
                             screen_changed = true;
                         }
@@ -1322,8 +1791,8 @@ impl AppFrame {
                                         3 => "270 degrees",
                                         _ => "",
                                     };
-                                    let left = gs.current_piece.left_column() + 1;
-                                    let right = gs.current_piece.right_column() + 1;
+                                    let left = gs.current_piece.left_column();
+                                    let right = gs.current_piece.right_column();
                                     tolk.output(
                                         format!(
                                             "Rotated Right, {}. Columns {} through {}",
@@ -1345,8 +1814,8 @@ impl AppFrame {
                                         3 => "270 degrees",
                                         _ => "",
                                     };
-                                    let left = gs.current_piece.left_column() + 1;
-                                    let right = gs.current_piece.right_column() + 1;
+                                    let left = gs.current_piece.left_column();
+                                    let right = gs.current_piece.right_column();
                                     tolk.output(
                                         format!(
                                             "Rotated Left, {}. Columns {} through {}",

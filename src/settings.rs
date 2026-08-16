@@ -36,6 +36,8 @@ pub struct Settings {
 
     pub check_for_updates: bool,
     pub last_update_check_timestamp: u64,
+
+    pub tutorial_completed: bool,
 }
 
 impl Default for Settings {
@@ -55,6 +57,8 @@ impl Default for Settings {
 
             check_for_updates: true,
             last_update_check_timestamp: 0,
+
+            tutorial_completed: false,
         }
     }
 }
