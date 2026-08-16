@@ -1135,10 +1135,21 @@ impl AppFrame {
                                         let mut gs = game_state.lock().unwrap();
                                         *gs = loaded_gs;
                                         *game_in_progress.lock().unwrap() = true;
-                                        tolk.output(
-                                            format!("Game Loaded from Slot {}", slot_id),
-                                            true,
+                                        let callout_tech =
+                                            settings.lock().unwrap().piece_callouts_technical;
+                                        let piece_name =
+                                            gs.current_piece.t_type.as_str(callout_tech);
+                                        let mut msg = format!(
+                                            "Game Loaded from Slot {}. Current piece: {}",
+                                            slot_id, piece_name
                                         );
+                                        if let Some(item) = gs.current_piece.item {
+                                            msg.push_str(&format!(", with {}", item.as_str()));
+                                        }
+                                        if let Some(inv) = gs.inventory {
+                                            msg.push_str(&format!(", Inventory: {}", inv.as_str()));
+                                        }
+                                        tolk.output(msg, true);
                                         audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                         *screen_state.lock().unwrap() = AppScreen::InGame;
                                     }
@@ -1775,12 +1786,13 @@ impl AppFrame {
                             }
                             InputAction::Left => {
                                 if gs.move_left() {
-                                    audio_engine.play_horizontal_move_sound(gs.current_piece.x);
-                                    if gs.current_piece.x == 0 || gs.current_piece.x == 9 {
+                                    audio_engine
+                                        .play_horizontal_move_sound(gs.current_piece.left_column());
+                                    if gs.current_piece.left_column() == 1 {
                                         audio_engine.play_aligned_sound();
                                     }
                                     tolk.output(
-                                        format!("Left, column {}", gs.current_piece.x + 1),
+                                        format!("Left, column {}", gs.current_piece.left_column()),
                                         true,
                                     );
                                 } else {
@@ -1789,12 +1801,14 @@ impl AppFrame {
                             }
                             InputAction::Right => {
                                 if gs.move_right() {
-                                    audio_engine.play_horizontal_move_sound(gs.current_piece.x);
-                                    if gs.current_piece.x == 0 || gs.current_piece.x == 9 {
+                                    audio_engine.play_horizontal_move_sound(
+                                        gs.current_piece.right_column(),
+                                    );
+                                    if gs.current_piece.right_column() == 10 {
                                         audio_engine.play_aligned_sound();
                                     }
                                     tolk.output(
-                                        format!("Right, column {}", gs.current_piece.x + 1),
+                                        format!("Right, column {}", gs.current_piece.left_column()),
                                         true,
                                     );
                                 } else {
@@ -1899,6 +1913,11 @@ impl AppFrame {
                                         format!("Soft drop, row {}", gs.current_piece.y + 1),
                                         true,
                                     );
+                                    if !gs.can_fall() && !gs.lock_delay_active {
+                                        gs.lock_delay_active = true;
+                                        gs.lock_delay_timer_ms = 500;
+                                        gs.moves_since_lock_delay = 0;
+                                    }
                                 }
                             }
                             InputAction::HardDrop => {
@@ -1911,13 +1930,14 @@ impl AppFrame {
 
                                 if res.zone_lines_cleared_this_turn > 0 {
                                     audio_engine.play_clear_sound(res.zone_lines_cleared_this_turn);
-                                }
-
-                                if res.zone_meter_full && zone_alerts {
-                                    tolk.output("Zone Meter Full!", true);
-                                }
-
-                                if res.cleared_lines > 0 {
+                                    tolk.output(
+                                        format!(
+                                            "Zone cleared {} lines! Total zone lines: {}",
+                                            res.zone_lines_cleared_this_turn, gs.zone_lines_cleared
+                                        ),
+                                        true,
+                                    );
+                                } else if res.cleared_lines > 0 {
                                     audio_engine.play_clear_sound(res.cleared_lines);
                                     let mut tts =
                                         format!("Hard drop. Cleared {} lines!", res.cleared_lines);
@@ -1947,6 +1967,11 @@ impl AppFrame {
                                         tolk.output(format!("T-Spin! Score: {}", gs.score), true);
                                     }
                                     tolk.output(format!("Hard drop. Score: {}", gs.score), true);
+                                }
+
+                                if res.zone_meter_full && zone_alerts {
+                                    audio_engine.play_zone_enter();
+                                    tolk.output("Zone Meter Full!", false);
                                 }
 
                                 if gs.is_game_over {
@@ -1993,9 +2018,33 @@ impl AppFrame {
                                 }
                             }
                             InputAction::UseItem => {
-                                if let Some(item) = gs.use_item() {
-                                    audio_engine.play_item_use(item);
-                                    tolk.output(format!("Used {}", item.as_str()), true);
+                                if let Some(res) = gs.use_item() {
+                                    audio_engine.play_item_use(res.item);
+                                    if res.item == ItemType::Magnet && res.lines_cleared > 0 {
+                                        audio_engine.play_clear_sound(res.lines_cleared);
+                                        let mut msg = format!(
+                                            "Used The Magnet! Cleared {} lines. Score: {}",
+                                            res.lines_cleared, gs.score
+                                        );
+                                        if let Some(acquired) = gs.item_acquired {
+                                            audio_engine.play_item_acquire();
+                                            msg.push_str(&format!(
+                                                " Acquired {}!",
+                                                acquired.as_str()
+                                            ));
+                                        }
+                                        tolk.output(msg, true);
+                                    } else {
+                                        let mut msg = format!("Used {}", res.item.as_str());
+                                        if let Some(acquired) = gs.item_acquired {
+                                            audio_engine.play_item_acquire();
+                                            msg.push_str(&format!(
+                                                ". Acquired {}!",
+                                                acquired.as_str()
+                                            ));
+                                        }
+                                        tolk.output(msg, true);
+                                    }
                                 } else {
                                     audio_engine.play_hold_denied_sound();
                                     tolk.output("No item to use", true);
@@ -2081,7 +2130,11 @@ impl AppFrame {
                 }
 
                 if gs.lock_delay_active {
+                    let old_timer = gs.lock_delay_timer_ms;
                     gs.lock_delay_timer_ms -= interval;
+                    if old_timer > 200 && gs.lock_delay_timer_ms <= 200 {
+                        audio_engine.play_lock_delay_warning();
+                    }
                     if gs.lock_delay_timer_ms <= 0 {
                         let res = gs.lock_piece();
                         let settings_lock = settings.lock().unwrap();
@@ -2091,9 +2144,17 @@ impl AppFrame {
 
                         if res.zone_lines_cleared_this_turn > 0 {
                             audio_engine.play_clear_sound(res.zone_lines_cleared_this_turn);
+                            tolk.output(
+                                format!(
+                                    "Zone cleared {} lines! Total zone lines: {}",
+                                    res.zone_lines_cleared_this_turn, gs.zone_lines_cleared
+                                ),
+                                true,
+                            );
                         }
 
                         if res.zone_meter_full && zone_alerts {
+                            audio_engine.play_zone_enter();
                             tolk.output("Zone Meter Full!", true);
                         }
 
@@ -2153,6 +2214,7 @@ impl AppFrame {
                         if !gs.move_down() {
                             gs.lock_delay_active = true;
                             gs.lock_delay_timer_ms = 500;
+                            gs.moves_since_lock_delay = 0;
                         }
                     }
                 }
