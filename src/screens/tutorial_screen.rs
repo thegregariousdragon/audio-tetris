@@ -228,7 +228,7 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                 "{}\n\nObjective:\nMove left and right across the board.\nNotice stereo audio panning from Column 1 to Column 10.\n\nLeft wall (Column 1): {}\nRight wall (Column 10): {}\n\nControls: Left/Right Arrows or A/D. Press Escape to exit tutorial.",
                 title, left_status, right_status
             );
-            let spoken = "Welcome to Audio Tetris! Let's start with lateral movement. Press Left Arrow or A to move left, and Right Arrow or D to move right. Notice how the sound pans across your headphones. Move all the way left to Column 1, then all the way right to Column 10 to continue.".to_string();
+            let spoken = "Lesson 1 of 8: Lateral Movement and Stereo Panning. Use the Left and Right arrows or A and D to move your piece across the board. Notice how the sound pans from left to right. Move all the way left to Column 1, then all the way right to Column 10 to continue.".to_string();
             (text, spoken)
         }
         TutorialStage::VerticalPitch => {
@@ -236,7 +236,7 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                 "{}\n\nObjective:\nListen to pitch decrease as piece descends from Row 1 toward Row 20.\n\nSoft drops performed: {} / 5\n\nControls:\n- Down Arrow or S: Soft drop (descending pitch)\n- Spacebar: Hard drop instantly to Row 20\n- Escape: Exit tutorial",
                 title, state.soft_drops
             );
-            let spoken = "As a piece descends from Row 1 toward Row 20, its pitch gets lower. Press Down Arrow or S to soft drop the piece 5 rows to hear the pitch descend, then press Spacebar to hard drop the piece to Row 20 and hear the heavy landing thud.".to_string();
+            let spoken = "Lesson 2 of 8: Elevation, Soft Drop, and Landing Impact. As a piece descends from Row 1 toward Row 20, its pitch gets lower. Press Down Arrow or S to soft drop 5 rows, then press Spacebar to hard drop the piece to Row 20 and hear the landing impact.".to_string();
             (text, spoken)
         }
         TutorialStage::RotationInspection => {
@@ -247,7 +247,7 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                 "{}\n\nObjective:\nInspect piece shape and rotate both clockwise and counter-clockwise.\n\nPiece Inspection (V / Semicolon): {}\nClockwise Rotation (X / Period): {}\nCounter-Clockwise Rotation (Z / Comma): {}\n\nControls: V/Semicolon (Inspect), X/Period (CW), Z/Comma (CCW), Spacebar (Drop).",
                 title, insp_status, cw_status, ccw_status
             );
-            let spoken = "Press V or Semicolon to inspect your piece shape and see which columns it covers. Next, press X or Period to rotate clockwise, and Z or Comma to rotate counter-clockwise. Hear the difference in the two tones. Rotate twice, then press Spacebar to drop your piece.".to_string();
+            let spoken = "Lesson 3 of 8: Rotations and Piece Inspection. Press V or Semicolon to inspect your piece shape and see which columns it covers. Next, press X or Period to rotate clockwise, and Z or Comma to rotate counter-clockwise. Rotate twice, then press Spacebar to drop your piece.".to_string();
             (text, spoken)
         }
         TutorialStage::HoldSlot => {
@@ -255,7 +255,7 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                 "{}\n\nObjective:\nPractice holding, swapping, and the hold-denied audio cue.\n\nControls:\n- C or Slash: Hold piece / Swap held piece\n- Spacebar: Drop piece to advance\n- Escape: Exit tutorial",
                 title
             );
-            let spoken = "Press C or Slash to hold this piece in reserve. When the next piece appears, press C again to swap it back. Try pressing C a second time on the same turn to hear the hold-denied sound.".to_string();
+            let spoken = "Lesson 4 of 8: The Hold Slot and Piece Swapping. Press C or Slash to hold this piece in reserve. When the next piece appears, press C again to swap it back. Try pressing C a second time on the same turn to hear the hold-denied sound, then press Spacebar to drop and advance.".to_string();
             (text, spoken)
         }
         TutorialStage::LineClears => {
@@ -264,14 +264,14 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                     "{}\n\nPart 1: Single Line Clear\nRow 20 has 9 blocks filled with a gap in Column 5.\n\nControls:\n- Left/Right: Move to Column 5\n- Spacebar: Drop and clear row\n- Escape: Exit tutorial",
                     title
                 );
-                let spoken = "Row 20 has 9 blocks filled with a single open slot in Column 5. Move your piece into Column 5 and press Spacebar to trigger a Single Clear!".to_string();
+                let spoken = "Lesson 5 of 8: Line Clears. Part 1: Single Line Clear. Row 20 has 9 blocks filled with a single open slot in Column 5. Move your piece into Column 5 and press Spacebar to trigger a Single Clear!".to_string();
                 (text, spoken)
             } else {
                 let text = format!(
                     "{}\n\nPart 2: 4-Line Tetris Fanfare\nRows 17 through 20 have an open well in Column 10.\n\nControls:\n- Left/Right: Move to Column 10\n- Spacebar: Drop for Tetris Fanfare\n- Escape: Exit tutorial",
                     title
                 );
-                let spoken = "Rows 17 through 20 have an open well in Column 10. Drop your Long Bar down Column 10 and press Spacebar to trigger the 4-line Tetris Fanfare!".to_string();
+                let spoken = "Part 2: 4-Line Tetris Fanfare. Rows 17 through 20 have an open well in Column 10. Drop your Long Bar down Column 10 and press Spacebar to trigger the 4-line Tetris Fanfare!".to_string();
                 (text, spoken)
             }
         }
@@ -280,7 +280,7 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                 "{}\n\nObjective:\nListen to the 10-tone stereo sweep across Columns 1 through 10.\n\nControls:\n- E or L: Activate Radar Sweep\n- Spacebar / Enter: Continue after scan\n- Escape: Exit tutorial",
                 title
             );
-            let spoken = "The board now contains stacks of different heights across Columns 1 through 10. Press E or L to activate the Radar. Listen as it sweeps 10 stereo tones from left to right. Lower tones mean short stacks, while higher tones mean tall stacks. Press E or L to scan.".to_string();
+            let spoken = "Lesson 6 of 8: The Radar Sweep. The board now contains stacks of different heights across Columns 1 through 10. Press E or L to activate the Radar. Listen as it sweeps 10 stereo tones from left to right. Lower tones mean short stacks, while higher tones mean tall stacks. Press E or L to scan, then press Spacebar or Enter to continue.".to_string();
             (text, spoken)
         }
         TutorialStage::ZoneMode => {
@@ -288,7 +288,7 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                 "{}\n\nObjective:\nActivate Zone Mode to freeze gravity and clear rows.\n\nControls:\n- Q or K: Enter Zone Mode\n- Spacebar: Drop pieces\n- Escape: Exit tutorial",
                 title
             );
-            let spoken = "Your Zone meter is now 100% charged! Press Q or K to enter Zone Mode. Notice how gravity completely freezes. Clear two rows before the Zone concludes.".to_string();
+            let spoken = "Lesson 7 of 8: Zone Mode. Your Zone meter is now 100% charged! Press Q or K to enter Zone Mode. Notice how gravity completely freezes. Clear two rows before the Zone concludes.".to_string();
             (text, spoken)
         }
         TutorialStage::PowerUpItems => {
@@ -302,9 +302,9 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
                 title, item_name
             );
             let spoken = match state.item_step {
-                0 => "You acquired The Magnet! Press Left Shift or Right Shift to pull floating blocks downward and seal empty holes.".to_string(),
-                1 => "You acquired The Laser! Press Shift to fire a high-frequency beam that vaporizes the bottom rows.".to_string(),
-                _ => "You acquired The Nuke! Press Shift to detonate a massive blast that clears the entire board.".to_string(),
+                0 => "Lesson 8 of 8: Power-Up Items. You acquired The Magnet! Press Left Shift or Right Shift to pull floating blocks downward and seal empty holes.".to_string(),
+                1 => "Next power-up: The Laser! Press Shift to fire a high-frequency beam that vaporizes the bottom rows.".to_string(),
+                _ => "Final power-up: The Nuke! Press Shift to detonate a massive blast that clears the entire board.".to_string(),
             };
             (text, spoken)
         }
@@ -348,11 +348,16 @@ mod tests {
             assert!(!text.is_empty());
             assert!(!spoken.is_empty());
 
-            if s == 5 {
+            if s == 1 {
+                assert!(spoken.contains("Lesson 1 of 8"));
+            } else if s == 5 {
+                assert!(spoken.contains("Lesson 5 of 8"));
                 state.sub_step = 1;
                 let (t2, s2) = render_tutorial(&state);
                 assert!(t2.contains("4-Line Tetris"));
                 assert!(s2.contains("Tetris Fanfare"));
+            } else if s == 9 {
+                assert!(spoken.contains("Congratulations!"));
             }
         }
     }
