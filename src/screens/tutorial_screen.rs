@@ -294,8 +294,8 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
         TutorialStage::PowerUpItems => {
             let item_name = match state.item_step {
                 0 => "The Magnet (Pulls blocks downward to seal gaps)",
-                1 => "The Laser (Incinerates bottom 2 rows)",
-                _ => "The Nuke (Demolishes entire board stack)",
+                1 => "The Laser (Incinerates the tallest column stack)",
+                _ => "The Nuke (Demolishes the bottom 4 rows of the board stack)",
             };
             let text = format!(
                 "{}\n\nCurrent Power-Up: {}\n\nControls:\n- Left Shift or Right Shift: Activate Power-Up\n- Escape: Exit tutorial",
@@ -303,8 +303,8 @@ pub fn render_tutorial(state: &TutorialState) -> (String, String) {
             );
             let spoken = match state.item_step {
                 0 => "Lesson 8 of 8: Power-Up Items. You acquired The Magnet! Press Left Shift or Right Shift to pull floating blocks downward and seal empty holes.".to_string(),
-                1 => "Next power-up: The Laser! Press Shift to fire a high-frequency beam that vaporizes the bottom rows.".to_string(),
-                _ => "Final power-up: The Nuke! Press Shift to detonate a massive blast that clears the entire board.".to_string(),
+                1 => "Next power-up: The Laser! Press Shift to fire a high-frequency beam that vaporizes the tallest column stack.".to_string(),
+                _ => "Final power-up: The Nuke! Press Shift to detonate a massive blast that incinerates the bottom 4 rows of the board stack.".to_string(),
             };
             (text, spoken)
         }

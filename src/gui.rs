@@ -791,7 +791,7 @@ impl AppFrame {
                                         ts.item_step = 2;
                                         audio_engine.play_item_acquire();
                                         tolk.output(
-                                            "Laser incinerated bottom rows! Final item: The Nuke. Press Shift to detonate.",
+                                            "Laser incinerated the tallest column stack! Final item: The Nuke. Press Shift to detonate.",
                                             true,
                                         );
                                     } else {
@@ -934,6 +934,13 @@ impl AppFrame {
                                                 false,
                                             );
                                             audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                                            if let Some(spawned) = gs.item_spawned {
+                                                audio_engine.play_item_spawn();
+                                                tolk.output(
+                                                    format!("{} spawned!", spawned.as_str()),
+                                                    false,
+                                                );
+                                            }
                                             *game_in_progress.lock().unwrap() = true;
                                             *screen_state.lock().unwrap() = AppScreen::InGame;
                                         }
@@ -1664,7 +1671,23 @@ impl AppFrame {
                                     let mut gs = game_state.lock().unwrap();
                                     *gs = GameState::new(diff);
                                     tolk.output("New Game Started!", true);
+                                    let callout_tech =
+                                        settings.lock().unwrap().piece_callouts_technical;
+                                    tolk.output(
+                                        format!(
+                                            "{} spawned",
+                                            gs.current_piece.t_type.as_str(callout_tech)
+                                        ),
+                                        false,
+                                    );
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
+                                    if let Some(spawned) = gs.item_spawned {
+                                        audio_engine.play_item_spawn();
+                                        tolk.output(
+                                            format!("{} spawned!", spawned.as_str()),
+                                            false,
+                                        );
+                                    }
                                     *game_in_progress.lock().unwrap() = true;
                                     *screen_state.lock().unwrap() = AppScreen::InGame;
                                 }

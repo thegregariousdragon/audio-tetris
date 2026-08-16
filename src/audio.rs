@@ -142,22 +142,36 @@ impl AudioEngine {
         let track_change_count = self.track_change_count.clone();
 
         thread::spawn(move || {
+            let mut last_loaded_gen: Option<u64> = None;
             loop {
-                let (is_empty, start_gen, idx) = {
+                if bgm_tracks.is_empty() {
+                    thread::sleep(Duration::from_millis(100));
+                    continue;
+                }
+
+                let current_gen = track_change_count.load(Ordering::SeqCst);
+                let (is_empty, should_advance) = {
                     let s = sink.lock().unwrap();
                     let is_empty = s.empty();
-                    let generation = track_change_count.load(Ordering::SeqCst);
-                    let idx = *track_idx.lock().unwrap();
-                    (is_empty, generation, idx)
+                    let should_advance = is_empty && last_loaded_gen == Some(current_gen);
+                    (is_empty, should_advance)
                 };
 
-                if is_empty && !bgm_tracks.is_empty() {
-                    let path = &bgm_tracks[idx % bgm_tracks.len()].0;
+                if is_empty {
+                    let idx = {
+                        let mut idx_guard = track_idx.lock().unwrap();
+                        if should_advance {
+                            *idx_guard = (*idx_guard + 1) % bgm_tracks.len();
+                        }
+                        *idx_guard % bgm_tracks.len()
+                    };
+
+                    let path = &bgm_tracks[idx].0;
                     if let Ok(file) = File::open(path) {
                         let reader = BufReader::new(file);
                         if let Ok(decoder) = Decoder::new(reader) {
-                            let current_gen = track_change_count.load(Ordering::SeqCst);
-                            if current_gen == start_gen {
+                            let check_gen = track_change_count.load(Ordering::SeqCst);
+                            if check_gen == current_gen {
                                 let s = sink.lock().unwrap();
                                 s.append(decoder);
                                 if !*enabled.lock().unwrap() {
@@ -167,6 +181,7 @@ impl AudioEngine {
                                     s.set_volume(*bgm_vol.lock().unwrap());
                                     s.play();
                                 }
+                                last_loaded_gen = Some(current_gen);
                             }
                         }
                     }
@@ -657,26 +672,40 @@ impl AudioEngine {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     #[test]
-    fn test_track_wrapping() {
-        let tracks = [
-            (PathBuf::from("track1.mp3"), "Track 1".to_string()),
-            (PathBuf::from("track2.mp3"), "Track 2".to_string()),
-        ];
-        let len = tracks.len();
-        let mut idx = 0;
-        idx = (idx + 1) % len;
-        assert_eq!(idx, 1);
-        idx = (idx + 1) % len;
-        assert_eq!(idx, 0);
+    fn test_auto_track_progression_logic() {
+        let track_count = 3;
+        let mut track_idx = 0;
+        let mut last_loaded_gen = None;
+        let current_gen = 0;
 
-        if idx == 0 {
-            idx = len - 1;
-        } else {
-            idx -= 1;
+        // 1. Initial startup: empty sink, no track loaded yet
+        let is_empty = true;
+        let should_advance = is_empty && last_loaded_gen == Some(current_gen);
+        assert!(!should_advance);
+        if should_advance {
+            track_idx = (track_idx + 1) % track_count;
         }
-        assert_eq!(idx, 1);
+        assert_eq!(track_idx, 0);
+        last_loaded_gen = Some(current_gen);
+
+        // 2. Track 0 completes naturally (sink becomes empty with same generation)
+        let is_empty = true;
+        let should_advance = is_empty && last_loaded_gen == Some(current_gen);
+        assert!(should_advance);
+        if should_advance {
+            track_idx = (track_idx + 1) % track_count;
+        }
+        assert_eq!(track_idx, 1);
+        last_loaded_gen = Some(current_gen);
+
+        // 3. Track 1 completes naturally
+        let is_empty = true;
+        let should_advance = is_empty && last_loaded_gen == Some(current_gen);
+        assert!(should_advance);
+        if should_advance {
+            track_idx = (track_idx + 1) % track_count;
+        }
+        assert_eq!(track_idx, 2);
     }
 }
