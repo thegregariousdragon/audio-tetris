@@ -1,31 +1,52 @@
 use crate::settings::Settings;
+use rust_i18n::t;
 
 pub fn render_settings(selection: usize, s: &Settings) -> (String, String) {
+    let on_str = t!("common.on");
+    let off_str = t!("common.off");
+
     let options = [
-        format!("Difficulty: {}", s.difficulty.as_str()),
-        "Speech Verbosity".to_string(),
-        format!(
-            "Voice Cues Volume: {}% (controlled by your screen reader)",
-            (s.voice_volume * 100.0) as i32
-        ),
-        format!("Sound Effects Volume: {}%", (s.sfx_volume * 100.0) as i32),
-        format!(
-            "Background Music: {}",
-            if s.bgm_enabled { "ON" } else { "OFF" }
-        ),
-        format!(
-            "Background Music Volume: {}%",
-            (s.bgm_volume * 100.0) as i32
-        ),
-        format!(
-            "Auto-Update Notifications: {}",
-            if s.check_for_updates { "ON" } else { "OFF" }
-        ),
-        "Back".to_string(),
+        t!("settings.language", name = s.language.display_name()).to_string(),
+        t!("settings.difficulty", value = s.difficulty.localized_str()).to_string(),
+        t!("settings.speech_verbosity").to_string(),
+        t!(
+            "settings.voice_volume",
+            value = ((s.voice_volume * 100.0) as i32).to_string()
+        )
+        .to_string(),
+        t!(
+            "settings.sfx_volume",
+            value = ((s.sfx_volume * 100.0) as i32).to_string()
+        )
+        .to_string(),
+        t!(
+            "settings.bgm_enabled",
+            status = if s.bgm_enabled { &on_str } else { &off_str }
+        )
+        .to_string(),
+        t!(
+            "settings.bgm_volume",
+            value = ((s.bgm_volume * 100.0) as i32).to_string()
+        )
+        .to_string(),
+        t!(
+            "settings.auto_update",
+            status = if s.check_for_updates {
+                &on_str
+            } else {
+                &off_str
+            }
+        )
+        .to_string(),
+        t!("common.back").to_string(),
     ];
 
     let sel = selection.min(options.len().saturating_sub(1));
-    let mut text = String::from("Settings\nUse Left and Right arrows to adjust values.\n\n");
+    let mut text = format!(
+        "{}\n{}\n\n",
+        t!("settings.title"),
+        t!("settings.instruction")
+    );
     for (i, opt) in options.iter().enumerate() {
         if i == sel {
             text.push_str(&format!("->   {}\n", opt));
@@ -33,34 +54,53 @@ pub fn render_settings(selection: usize, s: &Settings) -> (String, String) {
             text.push_str(&format!("   {}\n", opt));
         }
     }
-    let spoken = format!("{} {} of {}", options[sel], sel + 1, options.len());
+    let spoken = t!(
+        "common.item_counter",
+        item = &options[sel],
+        current = (sel + 1).to_string(),
+        total = options.len().to_string()
+    )
+    .to_string();
     (text, spoken)
 }
 
 pub fn render_speech_verbosity(selection: usize, s: &Settings) -> (String, String) {
+    let on_str = t!("common.on");
+    let off_str = t!("common.off");
+    let terse_str = t!("settings.piece_callouts_terse");
+    let desc_str = t!("settings.piece_callouts_descriptive");
+    let adv_str = t!("settings.scoring_details_advanced");
+    let sim_str = t!("settings.scoring_details_simple");
+
     let options = [
-        format!(
-            "Piece Callouts: {}",
-            if s.piece_callouts_technical {
-                "Terse"
+        t!(
+            "settings.piece_callouts",
+            value = if s.piece_callouts_technical {
+                &terse_str
             } else {
-                "Descriptive"
+                &desc_str
             }
-        ),
-        format!(
-            "Scoring Details: {}",
-            if s.scoring_details_advanced {
-                "Advanced"
+        )
+        .to_string(),
+        t!(
+            "settings.scoring_details",
+            value = if s.scoring_details_advanced {
+                &adv_str
             } else {
-                "Simple"
+                &sim_str
             }
-        ),
-        format!("Zone Alerts: {}", if s.zone_alerts { "On" } else { "Off" }),
-        "Back".to_string(),
+        )
+        .to_string(),
+        t!(
+            "settings.zone_alerts",
+            status = if s.zone_alerts { &on_str } else { &off_str }
+        )
+        .to_string(),
+        t!("common.back").to_string(),
     ];
 
     let sel = selection.min(options.len().saturating_sub(1));
-    let mut text = String::from("Speech Verbosity Settings\n\n");
+    let mut text = format!("{}\n\n", t!("settings.speech_title"));
     for (i, opt) in options.iter().enumerate() {
         if i == sel {
             text.push_str(&format!("->   {}\n", opt));
@@ -68,6 +108,12 @@ pub fn render_speech_verbosity(selection: usize, s: &Settings) -> (String, Strin
             text.push_str(&format!("   {}\n", opt));
         }
     }
-    let spoken = format!("{} {} of {}", options[sel], sel + 1, options.len());
+    let spoken = t!(
+        "common.item_counter",
+        item = &options[sel],
+        current = (sel + 1).to_string(),
+        total = options.len().to_string()
+    )
+    .to_string();
     (text, spoken)
 }

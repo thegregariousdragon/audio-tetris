@@ -34,17 +34,19 @@ impl TutorialStage {
         *self as usize
     }
 
-    pub fn title(&self) -> &'static str {
+    pub fn title(&self) -> String {
         match self {
-            TutorialStage::LateralMovement => "Lesson 1 of 8: Lateral Movement & Stereo Panning",
-            TutorialStage::VerticalPitch => "Lesson 2 of 8: Elevation, Soft Drop, & Landing Impact",
-            TutorialStage::RotationInspection => "Lesson 3 of 8: Rotations & Piece Inspection",
-            TutorialStage::HoldSlot => "Lesson 4 of 8: The Hold Slot & Piece Swapping",
-            TutorialStage::LineClears => "Lesson 5 of 8: Line Clears & 4-Line Tetris",
-            TutorialStage::RadarSweep => "Lesson 6 of 8: The Radar Sweep (Board Topography)",
-            TutorialStage::ZoneMode => "Lesson 7 of 8: Zone Mode (Time Freeze & Combos)",
-            TutorialStage::PowerUpItems => "Lesson 8 of 8: Power-Up Items (Magnet, Laser, Nuke)",
-            TutorialStage::Graduation => "Tutorial Complete: Graduation & Arcade Readiness",
+            TutorialStage::LateralMovement => rust_i18n::t!("tutorial.stage_1_title").to_string(),
+            TutorialStage::VerticalPitch => rust_i18n::t!("tutorial.stage_2_title").to_string(),
+            TutorialStage::RotationInspection => {
+                rust_i18n::t!("tutorial.stage_3_title").to_string()
+            }
+            TutorialStage::HoldSlot => rust_i18n::t!("tutorial.stage_4_title").to_string(),
+            TutorialStage::LineClears => rust_i18n::t!("tutorial.stage_5_title").to_string(),
+            TutorialStage::RadarSweep => rust_i18n::t!("tutorial.stage_6_title").to_string(),
+            TutorialStage::ZoneMode => rust_i18n::t!("tutorial.stage_7_title").to_string(),
+            TutorialStage::PowerUpItems => rust_i18n::t!("tutorial.stage_8_title").to_string(),
+            TutorialStage::Graduation => rust_i18n::t!("tutorial.stage_9_title").to_string(),
         }
     }
 }
@@ -211,109 +213,116 @@ impl TutorialState {
 pub fn render_tutorial(state: &TutorialState) -> (String, String) {
     let stage = TutorialStage::from_usize(state.stage);
     let title = stage.title();
+    let done_str = rust_i18n::t!("tutorial.status_done");
+    let pending_str = rust_i18n::t!("tutorial.status_pending");
 
     match stage {
         TutorialStage::LateralMovement => {
             let left_status = if state.reached_left {
-                "Done"
+                &done_str
             } else {
-                "Pending"
+                &pending_str
             };
             let right_status = if state.reached_right {
-                "Done"
+                &done_str
             } else {
-                "Pending"
+                &pending_str
             };
-            let text = format!(
-                "{}\n\nObjective:\nMove left and right across the board.\nNotice stereo audio panning from Column 1 to Column 10.\n\nLeft wall (Column 1): {}\nRight wall (Column 10): {}\n\nControls: Left/Right Arrows or A/D. Press Escape to exit tutorial.",
-                title, left_status, right_status
-            );
-            let spoken = "Lesson 1 of 8: Lateral Movement and Stereo Panning. Use the Left and Right arrows or A and D to move your piece across the board. Notice how the sound pans from left to right. Move all the way left to Column 1, then all the way right to Column 10 to continue.".to_string();
+            let text = rust_i18n::t!(
+                "tutorial.stage_1_text",
+                title = &title,
+                left_status = left_status,
+                right_status = right_status
+            )
+            .to_string();
+            let spoken = rust_i18n::t!("tutorial.stage_1_spoken").to_string();
             (text, spoken)
         }
         TutorialStage::VerticalPitch => {
-            let text = format!(
-                "{}\n\nObjective:\nListen to pitch decrease as piece descends from Row 1 toward Row 20.\n\nSoft drops performed: {} / 5\n\nControls:\n- Down Arrow or S: Soft drop (descending pitch)\n- Spacebar: Hard drop instantly to Row 20\n- Escape: Exit tutorial",
-                title, state.soft_drops
-            );
-            let spoken = "Lesson 2 of 8: Elevation, Soft Drop, and Landing Impact. As a piece descends from Row 1 toward Row 20, its pitch gets lower. Press Down Arrow or S to soft drop 5 rows, then press Spacebar to hard drop the piece to Row 20 and hear the landing impact.".to_string();
+            let text = rust_i18n::t!(
+                "tutorial.stage_2_text",
+                title = &title,
+                drops = state.soft_drops.to_string()
+            )
+            .to_string();
+            let spoken = rust_i18n::t!("tutorial.stage_2_spoken").to_string();
             (text, spoken)
         }
         TutorialStage::RotationInspection => {
-            let cw_status = if state.rotated_cw { "Done" } else { "Pending" };
-            let ccw_status = if state.rotated_ccw { "Done" } else { "Pending" };
-            let insp_status = if state.inspected { "Done" } else { "Pending" };
-            let text = format!(
-                "{}\n\nObjective:\nInspect piece shape and rotate both clockwise and counter-clockwise.\n\nPiece Inspection (V / Semicolon): {}\nClockwise Rotation (X / Period): {}\nCounter-Clockwise Rotation (Z / Comma): {}\n\nControls: V/Semicolon (Inspect), X/Period (CW), Z/Comma (CCW), Spacebar (Drop).",
-                title, insp_status, cw_status, ccw_status
-            );
-            let spoken = "Lesson 3 of 8: Rotations and Piece Inspection. Press V or Semicolon to inspect your piece shape and see which columns it covers. Next, press X or Period to rotate clockwise, and Z or Comma to rotate counter-clockwise. Rotate twice, then press Spacebar to drop your piece.".to_string();
+            let cw_status = if state.rotated_cw {
+                &done_str
+            } else {
+                &pending_str
+            };
+            let ccw_status = if state.rotated_ccw {
+                &done_str
+            } else {
+                &pending_str
+            };
+            let insp_status = if state.inspected {
+                &done_str
+            } else {
+                &pending_str
+            };
+            let text = rust_i18n::t!(
+                "tutorial.stage_3_text",
+                title = &title,
+                insp = insp_status,
+                cw = cw_status,
+                ccw = ccw_status
+            )
+            .to_string();
+            let spoken = rust_i18n::t!("tutorial.stage_3_spoken").to_string();
             (text, spoken)
         }
         TutorialStage::HoldSlot => {
-            let text = format!(
-                "{}\n\nObjective:\nPractice holding, swapping, and the hold-denied audio cue.\n\nControls:\n- C or Slash: Hold piece / Swap held piece\n- Spacebar: Drop piece to advance\n- Escape: Exit tutorial",
-                title
-            );
-            let spoken = "Lesson 4 of 8: The Hold Slot and Piece Swapping. Press C or Slash to hold this piece in reserve. When the next piece appears, press C again to swap it back. Try pressing C a second time on the same turn to hear the hold-denied sound, then press Spacebar to drop and advance.".to_string();
+            let text = rust_i18n::t!("tutorial.stage_4_text", title = &title).to_string();
+            let spoken = rust_i18n::t!("tutorial.stage_4_spoken").to_string();
             (text, spoken)
         }
         TutorialStage::LineClears => {
             if state.sub_step == 0 {
-                let text = format!(
-                    "{}\n\nPart 1: Single Line Clear\nRow 20 has 9 blocks filled with a gap in Column 5.\n\nControls:\n- Left/Right: Move to Column 5\n- Spacebar: Drop and clear row\n- Escape: Exit tutorial",
-                    title
-                );
-                let spoken = "Lesson 5 of 8: Line Clears. Part 1: Single Line Clear. Row 20 has 9 blocks filled with a single open slot in Column 5. Move your piece into Column 5 and press Spacebar to trigger a Single Clear!".to_string();
+                let text = rust_i18n::t!("tutorial.stage_5_p1_text", title = &title).to_string();
+                let spoken = rust_i18n::t!("tutorial.stage_5_p1_spoken").to_string();
                 (text, spoken)
             } else {
-                let text = format!(
-                    "{}\n\nPart 2: 4-Line Tetris Fanfare\nRows 17 through 20 have an open well in Column 10.\n\nControls:\n- Left/Right: Move to Column 10\n- Spacebar: Drop for Tetris Fanfare\n- Escape: Exit tutorial",
-                    title
-                );
-                let spoken = "Part 2: 4-Line Tetris Fanfare. Rows 17 through 20 have an open well in Column 10. Drop your Long Bar down Column 10 and press Spacebar to trigger the 4-line Tetris Fanfare!".to_string();
+                let text = rust_i18n::t!("tutorial.stage_5_p2_text", title = &title).to_string();
+                let spoken = rust_i18n::t!("tutorial.stage_5_p2_spoken").to_string();
                 (text, spoken)
             }
         }
         TutorialStage::RadarSweep => {
-            let text = format!(
-                "{}\n\nObjective:\nListen to the 10-tone stereo sweep across Columns 1 through 10.\n\nControls:\n- E or L: Activate Radar Sweep\n- Spacebar / Enter: Continue after scan\n- Escape: Exit tutorial",
-                title
-            );
-            let spoken = "Lesson 6 of 8: The Radar Sweep. The board now contains stacks of different heights across Columns 1 through 10. Press E or L to activate the Radar. Listen as it sweeps 10 stereo tones from left to right. Lower tones mean short stacks, while higher tones mean tall stacks. Press E or L to scan, then press Spacebar or Enter to continue.".to_string();
+            let text = rust_i18n::t!("tutorial.stage_6_text", title = &title).to_string();
+            let spoken = rust_i18n::t!("tutorial.stage_6_spoken").to_string();
             (text, spoken)
         }
         TutorialStage::ZoneMode => {
-            let text = format!(
-                "{}\n\nObjective:\nActivate Zone Mode to freeze gravity and clear rows.\n\nControls:\n- Q or K: Enter Zone Mode\n- Spacebar: Drop pieces\n- Escape: Exit tutorial",
-                title
-            );
-            let spoken = "Lesson 7 of 8: Zone Mode. Your Zone meter is now 100% charged! Press Q or K to enter Zone Mode. Notice how gravity completely freezes. Clear two rows before the Zone concludes.".to_string();
+            let text = rust_i18n::t!("tutorial.stage_7_text", title = &title).to_string();
+            let spoken = rust_i18n::t!("tutorial.stage_7_spoken").to_string();
             (text, spoken)
         }
         TutorialStage::PowerUpItems => {
             let item_name = match state.item_step {
-                0 => "The Magnet (Pulls blocks downward to seal gaps)",
-                1 => "The Laser (Incinerates the tallest column stack)",
-                _ => "The Nuke (Demolishes the bottom 4 rows of the board stack)",
+                0 => rust_i18n::t!("tutorial.stage_8_item_0_name"),
+                1 => rust_i18n::t!("tutorial.stage_8_item_1_name"),
+                _ => rust_i18n::t!("tutorial.stage_8_item_2_name"),
             };
-            let text = format!(
-                "{}\n\nCurrent Power-Up: {}\n\nControls:\n- Left Shift or Right Shift: Activate Power-Up\n- Escape: Exit tutorial",
-                title, item_name
-            );
+            let text = rust_i18n::t!(
+                "tutorial.stage_8_text",
+                title = &title,
+                item_name = &item_name
+            )
+            .to_string();
             let spoken = match state.item_step {
-                0 => "Lesson 8 of 8: Power-Up Items. You acquired The Magnet! Press Left Shift or Right Shift to pull floating blocks downward and seal empty holes.".to_string(),
-                1 => "Next power-up: The Laser! Press Shift to fire a high-frequency beam that vaporizes the tallest column stack.".to_string(),
-                _ => "Final power-up: The Nuke! Press Shift to detonate a massive blast that incinerates the bottom 4 rows of the board stack.".to_string(),
+                0 => rust_i18n::t!("tutorial.stage_8_spoken_0").to_string(),
+                1 => rust_i18n::t!("tutorial.stage_8_spoken_1").to_string(),
+                _ => rust_i18n::t!("tutorial.stage_8_spoken_2").to_string(),
             };
             (text, spoken)
         }
         TutorialStage::Graduation => {
-            let text = format!(
-                "{}\n\nCongratulations! You have completed the Audio Tetris tutorial.\n\nYou have mastered:\n- Lateral Movement & Stereo Panning (Columns 1 to 10)\n- Pitch-Mapped Elevation (Rows 1 to 20)\n- Rotations & Piece Inspection\n- Hold Queue & Swapping\n- Line Clears & 4-Line Tetris\n- 10-Tone Radar Sweep\n- Zone Mode Time Freeze\n- Power-Up Items (Magnet, Laser, Nuke)\n\n-> Press Enter to Go to Main Menu",
-                title
-            );
-            let spoken = "Congratulations! You have completed the Audio Tetris tutorial and mastered all movement, audio cues, radar sweeps, Zone Mode, and power-up items. You can explore individual keys at any time in Keyboard Help Mode by pressing H on the Main Menu. Press Enter to start your arcade journey!".to_string();
+            let text = rust_i18n::t!("tutorial.stage_9_text", title = &title).to_string();
+            let spoken = rust_i18n::t!("tutorial.stage_9_spoken").to_string();
             (text, spoken)
         }
     }
