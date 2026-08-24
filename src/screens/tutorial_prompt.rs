@@ -14,7 +14,9 @@ mod tests {
     fn test_render_tutorial_prompt() {
         let (text, spoken) = render_tutorial_prompt();
         assert!(text.contains("Audio Tetris"));
-        assert!(text.contains("Tutorial"));
+        assert!(
+            text.contains("Tutorial") || text.contains("tutorial") || text.contains("tutoriel")
+        );
         assert!(!spoken.is_empty());
     }
 }

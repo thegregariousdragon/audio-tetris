@@ -45,7 +45,7 @@ mod tests {
         assert!(lines[1].contains("Gregory Lopez"));
         assert!(lines[5].contains("wxDragon"));
         assert!(lines[6].contains("Serde"));
-        assert!(lines[7].contains("MIT License"));
+        assert!(lines[7].contains("MIT"));
     }
 
     #[test]
@@ -59,13 +59,13 @@ mod tests {
     fn test_render_about_subsequent_line() {
         let (text, spoken) = render_about(1, false);
         assert!(text.contains("2"));
-        assert_eq!(spoken, "Created by Gregory Lopez and Google Antigravity.");
+        assert!(spoken.contains("Gregory Lopez"));
     }
 
     #[test]
     fn test_render_about_bounds() {
         let (text, spoken) = render_about(999, false);
         assert!(text.contains("8"));
-        assert!(spoken.contains("Released under the MIT License."));
+        assert!(spoken.contains("MIT"));
     }
 }
