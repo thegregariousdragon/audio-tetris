@@ -159,28 +159,45 @@ mod tests {
     #[test]
     fn test_locale_files_exist_and_match_keys() {
         let en_us_json = include_str!("../locales/en-US.json");
-        let en_gb_json = include_str!("../locales/en-GB.json");
-
         let us_val: serde_json::Value =
             serde_json::from_str(en_us_json).expect("en-US json invalid");
-        let gb_val: serde_json::Value =
-            serde_json::from_str(en_gb_json).expect("en-GB json invalid");
-
-        // Verify top-level keys parity
         let us_obj = us_val.as_object().unwrap();
-        let gb_obj = gb_val.as_object().unwrap();
 
-        for (k, _) in us_obj {
-            assert!(gb_obj.contains_key(k), "en-GB missing section: {}", k);
-            if let Some(sub_us) = us_obj[k].as_object() {
-                let sub_gb = gb_obj[k].as_object().unwrap();
-                for (sub_k, _) in sub_us {
-                    assert!(
-                        sub_gb.contains_key(sub_k),
-                        "en-GB missing key in {}: {}",
-                        k,
-                        sub_k
-                    );
+        let target_locales: &[(&str, &str)] = &[
+            ("en-GB", include_str!("../locales/en-GB.json")),
+            ("es-ES", include_str!("../locales/es-ES.json")),
+            ("es-LA", include_str!("../locales/es-LA.json")),
+            ("fr-FR", include_str!("../locales/fr-FR.json")),
+            ("fr-CA", include_str!("../locales/fr-CA.json")),
+            ("it-IT", include_str!("../locales/it-IT.json")),
+            ("de-DE", include_str!("../locales/de-DE.json")),
+        ];
+
+        for (locale_code, json_str) in target_locales {
+            let target_val: serde_json::Value = serde_json::from_str(json_str)
+                .unwrap_or_else(|e| panic!("{} json invalid: {}", locale_code, e));
+            let target_obj = target_val.as_object().unwrap();
+
+            for (k, _) in us_obj {
+                assert!(
+                    target_obj.contains_key(k),
+                    "{} missing section: {}",
+                    locale_code,
+                    k
+                );
+                if let Some(sub_us) = us_obj[k].as_object() {
+                    let sub_target = target_obj[k].as_object().unwrap_or_else(|| {
+                        panic!("{} section {} is not an object", locale_code, k)
+                    });
+                    for (sub_k, _) in sub_us {
+                        assert!(
+                            sub_target.contains_key(sub_k),
+                            "{} missing key in {}: {}",
+                            locale_code,
+                            k,
+                            sub_k
+                        );
+                    }
                 }
             }
         }
@@ -199,6 +216,33 @@ mod tests {
         rust_i18n::set_locale("en-GB");
         assert_eq!(t!("settings.title"), "Settings");
         assert!(t!("how_to_play.line_7").contains("centred"));
+
+        rust_i18n::set_locale("es-ES");
+        assert_eq!(t!("main_menu.new_game"), "Partida nueva");
+        assert_eq!(t!("settings.title"), "Ajustes");
+
+        rust_i18n::set_locale("es-LA");
+        assert_eq!(t!("main_menu.new_game"), "Juego nuevo");
+        assert_eq!(t!("settings.title"), "Configuración");
+
+        rust_i18n::set_locale("fr-FR");
+        assert_eq!(t!("main_menu.new_game"), "Nouvelle partie");
+        assert_eq!(t!("settings.title"), "Paramètres");
+
+        rust_i18n::set_locale("fr-CA");
+        assert_eq!(t!("main_menu.new_game"), "Nouvelle partie");
+        assert_eq!(
+            t!("main_menu.leaderboard"),
+            "Meilleurs pointages et statistiques"
+        );
+
+        rust_i18n::set_locale("it-IT");
+        assert_eq!(t!("main_menu.new_game"), "Nuova partita");
+        assert_eq!(t!("settings.title"), "Impostazioni");
+
+        rust_i18n::set_locale("de-DE");
+        assert_eq!(t!("main_menu.new_game"), "Neues Spiel");
+        assert_eq!(t!("settings.title"), "Einstellungen");
 
         // Reset to en-US
         rust_i18n::set_locale("en-US");

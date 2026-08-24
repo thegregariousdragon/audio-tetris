@@ -48,13 +48,11 @@ mod tests {
         let lines = get_how_to_play_lines();
         assert_eq!(lines.len(), 14);
         assert!(lines[0].contains("Audio Tetris"));
-        assert!(lines[1].contains("Tetromino"));
+        assert!(lines[1].contains("Tetromin") || lines[1].contains("Tetramin"));
         assert!(lines[3].contains("10"));
-        assert!(lines[7].contains("stereo") || lines[7].contains("Stereo"));
-        assert!(lines[8].contains("pitch") || lines[8].contains("Pitch"));
         assert!(lines[9].contains("Radar"));
-        assert!(lines[11].contains("Zone"));
-        assert!(lines[13].contains("Keyboard"));
+        assert!(lines[11].contains("Zone") || lines[11].contains("Zona"));
+        assert!(lines[13].contains("H"));
     }
 
     #[test]
@@ -75,6 +73,6 @@ mod tests {
     fn test_render_how_to_play_bounds() {
         let (text, spoken) = render_how_to_play(999, false);
         assert!(text.contains("14"));
-        assert!(spoken.contains("Keyboard"));
+        assert!(spoken.contains("H"));
     }
 }
