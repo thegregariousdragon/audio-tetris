@@ -13,6 +13,7 @@ use crate::screens::{
 };
 use crate::settings::{Difficulty, Settings};
 use crate::updater::{self, UpdateStatus};
+use rust_i18n::t;
 use tolk::Tolk;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -38,29 +39,27 @@ pub enum InputAction {
     PieceInfo,
 }
 
-pub fn get_action_description(action: InputAction) -> &'static str {
+pub fn get_action_description(action: InputAction) -> String {
     match action {
-        InputAction::Left => "Left Arrow or A: Move piece left.",
-        InputAction::Right => "Right Arrow or D: Move piece right.",
-        InputAction::Down => {
-            "Down Arrow or S: Soft drop piece in-game, or move menu selection down."
-        }
-        InputAction::HardDrop => "Space Bar: Hard drop piece instantly.",
-        InputAction::RotateLeft => "Z or Comma: Rotate piece counter-clockwise.",
-        InputAction::RotateRight => "X or Period: Rotate piece clockwise.",
-        InputAction::Hold => "C or Slash: Hold piece.",
-        InputAction::Radar => "E or L Key: Radar sweep for stack heights.",
-        InputAction::Zone => "Q or K Key: Activate Zone mode.",
-        InputAction::UseItem => "Shift Key: Use power-up item.",
-        InputAction::PieceInfo => "V or Semicolon Key: Inspect piece shape and column span.",
-        InputAction::PrevTrack => "I Key: Previous background music track.",
-        InputAction::Mute => "O Key: Toggle background music mute.",
-        InputAction::NextTrack => "P Key: Next background music track.",
-        InputAction::Start => "Start Button: Gamepad Menu / Pause.",
-        InputAction::HelpMode => "H Key: Keyboard Help Mode.",
-        InputAction::Up => "Up Arrow or W: Move menu selection up.",
-        InputAction::Select => "Enter Key: Select menu option.",
-        InputAction::Back => "Escape Key: Go back or pause game.",
+        InputAction::Left => t!("key_describer.left").to_string(),
+        InputAction::Right => t!("key_describer.right").to_string(),
+        InputAction::Down => t!("key_describer.down").to_string(),
+        InputAction::HardDrop => t!("key_describer.hard_drop").to_string(),
+        InputAction::RotateLeft => t!("key_describer.rotate_left").to_string(),
+        InputAction::RotateRight => t!("key_describer.rotate_right").to_string(),
+        InputAction::Hold => t!("key_describer.hold").to_string(),
+        InputAction::Radar => t!("key_describer.radar").to_string(),
+        InputAction::Zone => t!("key_describer.zone").to_string(),
+        InputAction::UseItem => t!("key_describer.use_item").to_string(),
+        InputAction::PieceInfo => t!("key_describer.piece_info").to_string(),
+        InputAction::PrevTrack => t!("key_describer.prev_track").to_string(),
+        InputAction::Mute => t!("key_describer.mute").to_string(),
+        InputAction::NextTrack => t!("key_describer.next_track").to_string(),
+        InputAction::Start => t!("key_describer.start").to_string(),
+        InputAction::HelpMode => t!("key_describer.help_mode").to_string(),
+        InputAction::Up => t!("key_describer.up").to_string(),
+        InputAction::Select => t!("key_describer.select").to_string(),
+        InputAction::Back => t!("key_describer.back").to_string(),
     }
 }
 
@@ -152,10 +151,8 @@ impl AppFrame {
                     let current_scr = screen_bg.lock().unwrap().clone();
                     if current_scr != AppScreen::InGame {
                         tolk_bg.speak(
-                            format!(
-                                "Update available! Version {} is now available. Select Update in Main Menu to view release notes.",
-                                info.version
-                            ),
+                            t!("updater.spoken_update_available", version = &info.version)
+                                .to_string(),
                             true,
                         );
                     }
@@ -231,10 +228,13 @@ impl AppFrame {
             AppScreen::HowToPlay { scroll_line } => {
                 how_to_play::render_how_to_play(scroll_line, initial_load)
             }
-            AppScreen::About { scroll_line } => about_screen::render_about(scroll_line, initial_load),
-            AppScreen::Update { selection, ref status } => {
-                update_screen::render_update_screen(selection, env!("APP_VERSION"), status)
+            AppScreen::About { scroll_line } => {
+                about_screen::render_about(scroll_line, initial_load)
             }
+            AppScreen::Update {
+                selection,
+                ref status,
+            } => update_screen::render_update_screen(selection, env!("APP_VERSION"), status),
             AppScreen::ConfirmDialog { ref action } => {
                 confirm_dialog::render_confirm_dialog(action.clone())
             }
@@ -242,11 +242,9 @@ impl AppFrame {
                 let gs = self.game_state.lock().unwrap();
                 in_game_screen::render_in_game(&gs)
             }
-            AppScreen::KeyDescriber { .. } => (
-                "Keyboard Help Mode\nPress any key to hear its function.\nPress Escape twice to exit."
-                    .to_string(),
-                "".to_string(),
-            ),
+            AppScreen::KeyDescriber { .. } => {
+                (t!("key_describer.help_title").to_string(), "".to_string())
+            }
         };
 
         self.text_display.set_label(&display_text);
@@ -291,7 +289,9 @@ impl AppFrame {
                         let spoken = if initial_load { s } else { String::new() };
                         (d, spoken)
                     }
-                    AppScreen::MainMenu { selection } => main_menu::render_main_menu(selection, in_prog),
+                    AppScreen::MainMenu { selection } => {
+                        main_menu::render_main_menu(selection, in_prog)
+                    }
                     AppScreen::PauseMenu { selection } => pause_menu::render_pause_menu(selection),
                     AppScreen::SaveScreen { selection } => {
                         let slots = db.get_all_save_slots();
@@ -318,7 +318,10 @@ impl AppFrame {
                     AppScreen::About { scroll_line } => {
                         about_screen::render_about(scroll_line, initial_load)
                     }
-                    AppScreen::Update { selection, ref status } => {
+                    AppScreen::Update {
+                        selection,
+                        ref status,
+                    } => {
                         update_screen::render_update_screen(selection, env!("APP_VERSION"), status)
                     }
                     AppScreen::ConfirmDialog { ref action } => {
@@ -328,10 +331,9 @@ impl AppFrame {
                         let gs = game_state.lock().unwrap();
                         in_game_screen::render_in_game(&gs)
                     }
-                    AppScreen::KeyDescriber { .. } => (
-                        "Keyboard Help Mode\nPress any key to hear its function.\nPress Escape twice to exit.".to_string(),
-                        "".to_string(),
-                    ),
+                    AppScreen::KeyDescriber { .. } => {
+                        (t!("key_describer.help_title").to_string(), "".to_string())
+                    }
                 };
 
                 text_ctrl.set_label(&display_text);
@@ -365,11 +367,11 @@ impl AppFrame {
                 if !matches!(current_screen, AppScreen::KeyDescriber { .. }) {
                     if action == InputAction::NextTrack {
                         let track = audio_engine.next_track();
-                        tolk.output(format!("Playing {}", track), true);
+                        tolk.output(t!("in_game.bgm_playing", track = &track).to_string(), true);
                         return;
                     } else if action == InputAction::PrevTrack {
                         let track = audio_engine.prev_track();
-                        tolk.output(format!("Playing {}", track), true);
+                        tolk.output(t!("in_game.bgm_playing", track = &track).to_string(), true);
                         return;
                     } else if action == InputAction::Mute {
                         let mut s = settings.lock().unwrap();
@@ -387,8 +389,10 @@ impl AppFrame {
                             audio_engine.set_bgm_volume(0.0);
                         }
                         audio_engine.set_bgm_enabled(s.bgm_enabled);
-                        let status = if s.bgm_enabled { "On" } else { "Off" };
-                        tolk.speak(format!("Background Music {}", status), true);
+                        let on_str = t!("common.on");
+                        let off_str = t!("common.off");
+                        let status = if s.bgm_enabled { &on_str } else { &off_str };
+                        tolk.speak(t!("in_game.bgm_status", status = status).to_string(), true);
                         s.save();
                         if matches!(current_screen, AppScreen::Settings { .. }) {
                             render_in_closure(true, false);
@@ -411,13 +415,13 @@ impl AppFrame {
                                     AppScreen::MainMenu { selection: 0 };
                             }
                             render_in_closure(true, false);
-                            tolk.output("Exited Help Mode.", true);
+                            tolk.output(t!("key_describer.exited_help_mode").to_string(), true);
                         } else {
                             audio_engine.play_menu_move();
                             *screen_state.lock().unwrap() = AppScreen::KeyDescriber {
                                 esc_count: new_count,
                             };
-                            tolk.output("Press Escape once more to exit Help Mode.", true);
+                            tolk.output(t!("key_describer.press_esc_again").to_string(), true);
                         }
                     } else {
                         audio_engine.play_menu_move();
@@ -432,12 +436,12 @@ impl AppFrame {
                 if action == InputAction::Start {
                     if current_screen == AppScreen::InGame {
                         audio_engine.play_menu_select();
-                        tolk.output("Game Paused", true);
+                        tolk.output(t!("pause_menu.paused").to_string(), true);
                         *screen_state.lock().unwrap() = AppScreen::PauseMenu { selection: 0 };
                         render_in_closure(true, false);
                     } else if let AppScreen::PauseMenu { .. } = current_screen {
                         audio_engine.play_menu_select();
-                        tolk.output("Game Resumed", true);
+                        tolk.output(t!("pause_menu.resumed").to_string(), true);
                         *screen_state.lock().unwrap() = AppScreen::InGame;
                         render_in_closure(true, false);
                     }
@@ -462,7 +466,8 @@ impl AppFrame {
                                 s.save();
                             }
                             *screen_state.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
-                            tolk.output("Main Menu. New Game 1 of 9", true);
+                            let spoken = main_menu::render_main_menu(0, false).1;
+                            tolk.output(&spoken, true);
                             screen_changed = true;
                         }
                         InputAction::Up
@@ -482,7 +487,7 @@ impl AppFrame {
                         match action {
                             InputAction::Back => {
                                 audio_engine.play_menu_select();
-                                tolk.output("Tutorial Exited. Main Menu.", true);
+                                tolk.output(t!("tutorial.exited").to_string(), true);
                                 *screen_state.lock().unwrap() =
                                     AppScreen::MainMenu { selection: 0 };
                                 screen_changed = true;
@@ -496,13 +501,18 @@ impl AppFrame {
                                         if ts.game_state.current_piece.x == 0 {
                                             ts.reached_left = true;
                                             audio_engine.play_aligned_sound();
-                                            tolk.output("Left wall, Column 1 reached!", true);
+                                            tolk.output(
+                                                t!("tutorial.stage_1_left_reached").to_string(),
+                                                true,
+                                            );
                                         } else {
                                             tolk.output(
-                                                format!(
-                                                    "Left, Column {}",
-                                                    ts.game_state.current_piece.x + 1
-                                                ),
+                                                t!(
+                                                    "in_game.move_left",
+                                                    col = (ts.game_state.current_piece.x + 1)
+                                                        .to_string()
+                                                )
+                                                .to_string(),
                                                 true,
                                             );
                                         }
@@ -524,10 +534,15 @@ impl AppFrame {
                                             ts.game_state.current_piece.x,
                                         );
                                         tolk.output(
-                                            format!(
-                                                "Left, Column {}",
-                                                ts.game_state.current_piece.left_column()
-                                            ),
+                                            t!(
+                                                "in_game.move_left",
+                                                col = ts
+                                                    .game_state
+                                                    .current_piece
+                                                    .left_column()
+                                                    .to_string()
+                                            )
+                                            .to_string(),
                                             true,
                                         );
                                     }
@@ -543,13 +558,18 @@ impl AppFrame {
                                         if ts.game_state.current_piece.right_column() == 10 {
                                             ts.reached_right = true;
                                             audio_engine.play_aligned_sound();
-                                            tolk.output("Right wall, Column 10 reached!", true);
+                                            tolk.output(
+                                                t!("tutorial.stage_1_right_reached").to_string(),
+                                                true,
+                                            );
                                         } else {
                                             tolk.output(
-                                                format!(
-                                                    "Right, Column {}",
-                                                    ts.game_state.current_piece.x + 1
-                                                ),
+                                                t!(
+                                                    "in_game.move_right",
+                                                    col = (ts.game_state.current_piece.x + 1)
+                                                        .to_string()
+                                                )
+                                                .to_string(),
                                                 true,
                                             );
                                         }
@@ -571,10 +591,15 @@ impl AppFrame {
                                             ts.game_state.current_piece.x,
                                         );
                                         tolk.output(
-                                            format!(
-                                                "Right, Column {}",
-                                                ts.game_state.current_piece.left_column()
-                                            ),
+                                            t!(
+                                                "in_game.move_right",
+                                                col = ts
+                                                    .game_state
+                                                    .current_piece
+                                                    .left_column()
+                                                    .to_string()
+                                            )
+                                            .to_string(),
                                             true,
                                         );
                                     }
@@ -588,10 +613,12 @@ impl AppFrame {
                                             .play_soft_drop_sound(ts.game_state.current_piece.y);
                                         ts.soft_drops += 1;
                                         tolk.output(
-                                            format!(
-                                                "Soft drop, Row {}",
-                                                ts.game_state.current_piece.y + 1
-                                            ),
+                                            t!(
+                                                "in_game.soft_drop",
+                                                row =
+                                                    (ts.game_state.current_piece.y + 1).to_string()
+                                            )
+                                            .to_string(),
                                             true,
                                         );
                                     }
@@ -670,12 +697,21 @@ impl AppFrame {
                                 if current_stage == 3 {
                                     ts.inspected = true;
                                     tolk.output(
-                                        format!(
-                                            "Current piece: T-shape. Columns {} through {}. Width: {}.",
-                                             ts.game_state.current_piece.left_column(),
-                                             ts.game_state.current_piece.right_column(),
-                                             ts.game_state.current_piece.width()
-                                        ),
+                                        t!(
+                                            "tutorial.stage_3_inspect_spoken",
+                                            left = ts
+                                                .game_state
+                                                .current_piece
+                                                .left_column()
+                                                .to_string(),
+                                            right = ts
+                                                .game_state
+                                                .current_piece
+                                                .right_column()
+                                                .to_string(),
+                                            width = ts.game_state.current_piece.width().to_string()
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                     screen_changed = true;
@@ -688,11 +724,20 @@ impl AppFrame {
                                         audio_engine
                                             .play_rotate_cw_sound(ts.game_state.current_piece.y);
                                         tolk.output(
-                                            format!(
-                                                "Rotated Right clockwise. Columns {} through {}",
-                                                ts.game_state.current_piece.left_column(),
-                                                ts.game_state.current_piece.right_column()
-                                            ),
+                                            t!(
+                                                "tutorial.stage_3_cw_spoken",
+                                                left = ts
+                                                    .game_state
+                                                    .current_piece
+                                                    .left_column()
+                                                    .to_string(),
+                                                right = ts
+                                                    .game_state
+                                                    .current_piece
+                                                    .right_column()
+                                                    .to_string()
+                                            )
+                                            .to_string(),
                                             true,
                                         );
                                     }
@@ -706,11 +751,20 @@ impl AppFrame {
                                         audio_engine
                                             .play_rotate_ccw_sound(ts.game_state.current_piece.y);
                                         tolk.output(
-                                            format!(
-                                                "Rotated Left counter-clockwise. Columns {} through {}",
-                                                ts.game_state.current_piece.left_column(),
-                                                ts.game_state.current_piece.right_column()
-                                            ),
+                                            t!(
+                                                "tutorial.stage_3_ccw_spoken",
+                                                left = ts
+                                                    .game_state
+                                                    .current_piece
+                                                    .left_column()
+                                                    .to_string(),
+                                                right = ts
+                                                    .game_state
+                                                    .current_piece
+                                                    .right_column()
+                                                    .to_string()
+                                            )
+                                            .to_string(),
                                             true,
                                         );
                                     }
@@ -726,7 +780,7 @@ impl AppFrame {
                                         ts.game_state.current_piece =
                                             Tetromino::new(TetrominoType::I);
                                         tolk.output(
-                                            "Held Right zig-zag. New piece: Long bar. Press C or Slash again to swap back.",
+                                            t!("tutorial.stage_4_hold_1").to_string(),
                                             true,
                                         );
                                         audio_engine
@@ -738,7 +792,7 @@ impl AppFrame {
                                         ts.game_state.current_piece =
                                             Tetromino::new(TetrominoType::S);
                                         tolk.output(
-                                            "Swapped back! Now press C or Slash once more this turn to hear the hold-denied cue.",
+                                            t!("tutorial.stage_4_hold_2").to_string(),
                                             true,
                                         );
                                         audio_engine
@@ -747,7 +801,7 @@ impl AppFrame {
                                         ts.tried_denied = true;
                                         audio_engine.play_hold_denied_sound();
                                         tolk.output(
-                                            "Already held piece this turn. Now press Spacebar to drop and advance.",
+                                            t!("tutorial.stage_4_hold_3").to_string(),
                                             true,
                                         );
                                     }
@@ -759,7 +813,7 @@ impl AppFrame {
                                     ts.radar_scanned = true;
                                     audio_engine.play_radar_sweep(ts.game_state.get_topography());
                                     tolk.output(
-                                        "Radar sweep complete: highest stack height 8 in Column 9. Press Spacebar or Enter to continue.",
+                                        t!("tutorial.stage_6_scan_complete").to_string(),
                                         true,
                                     );
                                     screen_changed = true;
@@ -769,10 +823,7 @@ impl AppFrame {
                                 if current_stage == 7 {
                                     ts.zone_entered = true;
                                     audio_engine.play_zone_enter();
-                                    tolk.output(
-                                        "Zone Mode Activated! Gravity is frozen. Press Spacebar to drop your piece and clear rows.",
-                                        true,
-                                    );
+                                    tolk.output(t!("tutorial.stage_7_active").to_string(), true);
                                     screen_changed = true;
                                 }
                             }
@@ -783,7 +834,7 @@ impl AppFrame {
                                         ts.item_step = 1;
                                         audio_engine.play_item_acquire();
                                         tolk.output(
-                                            "Magnet pulled blocks down! Next: The Laser. Press Shift to fire.",
+                                            t!("tutorial.stage_8_step_0_result").to_string(),
                                             true,
                                         );
                                     } else if ts.item_step == 1 {
@@ -791,7 +842,7 @@ impl AppFrame {
                                         ts.item_step = 2;
                                         audio_engine.play_item_acquire();
                                         tolk.output(
-                                            "Laser incinerated the tallest column stack! Final item: The Nuke. Press Shift to detonate.",
+                                            t!("tutorial.stage_8_step_1_result").to_string(),
                                             true,
                                         );
                                     } else {
@@ -821,7 +872,8 @@ impl AppFrame {
                                         s.tutorial_completed = true;
                                         s.save();
                                     }
-                                    tolk.output("Main Menu. New Game 1 of 9", true);
+                                    let spoken = main_menu::render_main_menu(0, false).1;
+                                    tolk.output(&spoken, true);
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 0 };
                                     screen_changed = true;
@@ -862,7 +914,7 @@ impl AppFrame {
                                 if in_prog {
                                     match selection {
                                         0 => {
-                                            tolk.output("Game Resumed", true);
+                                            tolk.output(t!("pause_menu.resumed").to_string(), true);
                                             *screen_state.lock().unwrap() = AppScreen::InGame;
                                         }
                                         1 => {
@@ -923,21 +975,30 @@ impl AppFrame {
                                             let diff = settings.lock().unwrap().difficulty;
                                             let mut gs = game_state.lock().unwrap();
                                             *gs = GameState::new(diff);
-                                            tolk.output("New Game Started!", true);
+                                            tolk.output(
+                                                t!("in_game.new_game_started").to_string(),
+                                                true,
+                                            );
                                             let callout_tech =
                                                 settings.lock().unwrap().piece_callouts_technical;
+                                            let p_name = gs
+                                                .current_piece
+                                                .t_type
+                                                .localized_name(callout_tech);
                                             tolk.output(
-                                                format!(
-                                                    "{} spawned",
-                                                    gs.current_piece.t_type.as_str(callout_tech)
-                                                ),
+                                                t!("in_game.piece_spawned", piece = &p_name)
+                                                    .to_string(),
                                                 false,
                                             );
                                             audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                             if let Some(spawned) = gs.item_spawned {
                                                 audio_engine.play_item_spawn();
                                                 tolk.output(
-                                                    format!("{} spawned!", spawned.as_str()),
+                                                    t!(
+                                                        "in_game.item_spawned",
+                                                        item = &spawned.localized_name()
+                                                    )
+                                                    .to_string(),
                                                     false,
                                                 );
                                             }
@@ -994,13 +1055,13 @@ impl AppFrame {
                                 audio_engine.play_menu_select();
                                 *screen_state.lock().unwrap() =
                                     AppScreen::KeyDescriber { esc_count: 0 };
-                                tolk.output("Keyboard Help Mode. Press any key to hear its function. Press Escape twice to exit.", true);
+                                tolk.output(t!("key_describer.intro_spoken").to_string(), true);
                                 screen_changed = true;
                             }
                             InputAction::Back => {
                                 audio_engine.play_menu_select();
                                 if in_prog {
-                                    tolk.output("Game Resumed", true);
+                                    tolk.output(t!("pause_menu.resumed").to_string(), true);
                                     *screen_state.lock().unwrap() = AppScreen::InGame;
                                     screen_changed = true;
                                 }
@@ -1037,7 +1098,7 @@ impl AppFrame {
                                 audio_engine.play_menu_select();
                                 match selection {
                                     0 => {
-                                        tolk.output("Game Resumed", true);
+                                        tolk.output(t!("pause_menu.resumed").to_string(), true);
                                         *screen_state.lock().unwrap() = AppScreen::InGame;
                                     }
                                     1 => {
@@ -1064,7 +1125,7 @@ impl AppFrame {
                             }
                             InputAction::Back => {
                                 audio_engine.play_menu_select();
-                                tolk.output("Game Resumed", true);
+                                tolk.output(t!("pause_menu.resumed").to_string(), true);
                                 *screen_state.lock().unwrap() = AppScreen::InGame;
                                 screen_changed = true;
                             }
@@ -1092,9 +1153,16 @@ impl AppFrame {
                                 let slot_id = selection + 1;
                                 let gs = game_state.lock().unwrap();
                                 if let Err(e) = db.save_slot(slot_id, &gs) {
-                                    tolk.output(format!("Failed to save game: {}", e), true);
+                                    tolk.output(
+                                        t!("save_load.save_fail", err = &e.to_string()).to_string(),
+                                        true,
+                                    );
                                 } else {
-                                    tolk.output(format!("Game Saved to Slot {}", slot_id), true);
+                                    tolk.output(
+                                        t!("save_load.save_success", slot = slot_id.to_string())
+                                            .to_string(),
+                                        true,
+                                    );
                                     *screen_state.lock().unwrap() =
                                         AppScreen::PauseMenu { selection: 1 };
                                 }
@@ -1138,16 +1206,24 @@ impl AppFrame {
                                         let callout_tech =
                                             settings.lock().unwrap().piece_callouts_technical;
                                         let piece_name =
-                                            gs.current_piece.t_type.as_str(callout_tech);
-                                        let mut msg = format!(
-                                            "Game Loaded from Slot {}. Current piece: {}",
-                                            slot_id, piece_name
-                                        );
+                                            gs.current_piece.t_type.localized_name(callout_tech);
+                                        let mut msg = t!(
+                                            "save_load.load_success",
+                                            slot = slot_id.to_string(),
+                                            piece = &piece_name
+                                        )
+                                        .to_string();
                                         if let Some(item) = gs.current_piece.item {
-                                            msg.push_str(&format!(", with {}", item.as_str()));
+                                            msg.push_str(&t!(
+                                                "save_load.load_item_suffix",
+                                                item = &item.localized_name()
+                                            ));
                                         }
                                         if let Some(inv) = gs.inventory {
-                                            msg.push_str(&format!(", Inventory: {}", inv.as_str()));
+                                            msg.push_str(&t!(
+                                                "save_load.load_inv_suffix",
+                                                item = &inv.localized_name()
+                                            ));
                                         }
                                         tolk.output(msg, true);
                                         audio_engine.play_spawn_sound(gs.current_piece.t_type);
@@ -1155,7 +1231,11 @@ impl AppFrame {
                                     }
                                     Err(_) => {
                                         audio_engine.play_hold_denied_sound();
-                                        tolk.output(format!("Slot {} is Empty", slot_id), true);
+                                        tolk.output(
+                                            t!("save_load.load_empty", slot = slot_id.to_string())
+                                                .to_string(),
+                                            true,
+                                        );
                                     }
                                 }
                             } else {
@@ -1246,14 +1326,14 @@ impl AppFrame {
                     }
                     AppScreen::Settings { selection } => match action {
                         InputAction::Up => {
-                            let new_sel = if selection > 0 { selection - 1 } else { 7 };
+                            let new_sel = if selection > 0 { selection - 1 } else { 8 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::Settings { selection: new_sel };
                             audio_engine.play_menu_move();
                             screen_changed = true;
                         }
                         InputAction::Down => {
-                            let new_sel = if selection < 7 { selection + 1 } else { 0 };
+                            let new_sel = if selection < 8 { selection + 1 } else { 0 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::Settings { selection: new_sel };
                             audio_engine.play_menu_move();
@@ -1262,24 +1342,44 @@ impl AppFrame {
                         InputAction::Left => {
                             let mut s = settings.lock().unwrap();
                             if selection == 0 {
+                                s.language = s.language.prev();
+                                rust_i18n::set_locale(s.language.code());
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!("settings.language", name = s.language.display_name())
+                                        .to_string(),
+                                    true,
+                                );
+                            } else if selection == 1 {
                                 s.difficulty = match s.difficulty {
                                     Difficulty::Easy => Difficulty::Difficult,
                                     Difficulty::Moderate => Difficulty::Easy,
                                     Difficulty::Difficult => Difficulty::Moderate,
                                 };
                                 audio_engine.play_menu_move();
-                                tolk.speak(format!("Difficulty {}", s.difficulty.as_str()), true);
-                            } else if selection == 2 {
-                                s.voice_volume = (s.voice_volume - 0.05).max(0.0);
                                 tolk.speak(
-                                    format!("Voice Volume {}%", (s.voice_volume * 100.0) as i32),
+                                    t!(
+                                        "settings.difficulty_spoken",
+                                        value = s.difficulty.localized_str()
+                                    )
+                                    .to_string(),
                                     true,
                                 );
                             } else if selection == 3 {
+                                s.voice_volume = (s.voice_volume - 0.05).max(0.0);
+                                tolk.speak(
+                                    t!(
+                                        "settings.voice_volume_spoken",
+                                        value = ((s.voice_volume * 100.0) as i32).to_string()
+                                    )
+                                    .to_string(),
+                                    true,
+                                );
+                            } else if selection == 4 {
                                 s.sfx_volume = (s.sfx_volume - 0.05).max(0.0);
                                 audio_engine.set_sfx_volume(s.sfx_volume);
                                 audio_engine.play_aligned_sound();
-                            } else if selection == 4 {
+                            } else if selection == 5 {
                                 s.bgm_enabled = !s.bgm_enabled;
                                 if s.bgm_enabled {
                                     s.bgm_volume = if s.saved_bgm_volume > 0.0 {
@@ -1294,9 +1394,14 @@ impl AppFrame {
                                     audio_engine.set_bgm_volume(0.0);
                                 }
                                 audio_engine.set_bgm_enabled(s.bgm_enabled);
-                                let status = if s.bgm_enabled { "On" } else { "Off" };
-                                tolk.speak(format!("Background Music {}", status), true);
-                            } else if selection == 5 {
+                                let on_str = t!("common.on");
+                                let off_str = t!("common.off");
+                                let status = if s.bgm_enabled { &on_str } else { &off_str };
+                                tolk.speak(
+                                    t!("settings.bgm_status_spoken", status = status).to_string(),
+                                    true,
+                                );
+                            } else if selection == 6 {
                                 s.bgm_volume = (s.bgm_volume - 0.05).max(0.0);
                                 audio_engine.set_bgm_volume(s.bgm_volume);
                                 if !s.bgm_enabled && s.bgm_volume > 0.0 {
@@ -1304,17 +1409,27 @@ impl AppFrame {
                                     audio_engine.set_bgm_enabled(true);
                                 }
                                 tolk.speak(
-                                    format!(
-                                        "Background Music Volume {}%",
-                                        (s.bgm_volume * 100.0) as i32
-                                    ),
+                                    t!(
+                                        "settings.bgm_volume_spoken",
+                                        value = ((s.bgm_volume * 100.0) as i32).to_string()
+                                    )
+                                    .to_string(),
                                     true,
                                 );
-                            } else if selection == 6 {
+                            } else if selection == 7 {
                                 s.check_for_updates = !s.check_for_updates;
-                                let status = if s.check_for_updates { "On" } else { "Off" };
+                                let on_str = t!("common.on");
+                                let off_str = t!("common.off");
+                                let status = if s.check_for_updates {
+                                    &on_str
+                                } else {
+                                    &off_str
+                                };
                                 audio_engine.play_menu_move();
-                                tolk.speak(format!("Auto Update Notifications {}", status), true);
+                                tolk.speak(
+                                    t!("settings.auto_update_spoken", status = status).to_string(),
+                                    true,
+                                );
                             }
                             s.save();
                             screen_changed = true;
@@ -1322,24 +1437,44 @@ impl AppFrame {
                         InputAction::Right => {
                             let mut s = settings.lock().unwrap();
                             if selection == 0 {
+                                s.language = s.language.next();
+                                rust_i18n::set_locale(s.language.code());
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!("settings.language", name = s.language.display_name())
+                                        .to_string(),
+                                    true,
+                                );
+                            } else if selection == 1 {
                                 s.difficulty = match s.difficulty {
                                     Difficulty::Easy => Difficulty::Moderate,
                                     Difficulty::Moderate => Difficulty::Difficult,
                                     Difficulty::Difficult => Difficulty::Easy,
                                 };
                                 audio_engine.play_menu_move();
-                                tolk.speak(format!("Difficulty {}", s.difficulty.as_str()), true);
-                            } else if selection == 2 {
-                                s.voice_volume = (s.voice_volume + 0.05).min(1.0);
                                 tolk.speak(
-                                    format!("Voice Volume {}%", (s.voice_volume * 100.0) as i32),
+                                    t!(
+                                        "settings.difficulty_spoken",
+                                        value = s.difficulty.localized_str()
+                                    )
+                                    .to_string(),
                                     true,
                                 );
                             } else if selection == 3 {
+                                s.voice_volume = (s.voice_volume + 0.05).min(1.0);
+                                tolk.speak(
+                                    t!(
+                                        "settings.voice_volume_spoken",
+                                        value = ((s.voice_volume * 100.0) as i32).to_string()
+                                    )
+                                    .to_string(),
+                                    true,
+                                );
+                            } else if selection == 4 {
                                 s.sfx_volume = (s.sfx_volume + 0.05).min(1.0);
                                 audio_engine.set_sfx_volume(s.sfx_volume);
                                 audio_engine.play_aligned_sound();
-                            } else if selection == 4 {
+                            } else if selection == 5 {
                                 s.bgm_enabled = !s.bgm_enabled;
                                 if s.bgm_enabled {
                                     s.bgm_volume = if s.saved_bgm_volume > 0.0 {
@@ -1354,9 +1489,14 @@ impl AppFrame {
                                     audio_engine.set_bgm_volume(0.0);
                                 }
                                 audio_engine.set_bgm_enabled(s.bgm_enabled);
-                                let status = if s.bgm_enabled { "On" } else { "Off" };
-                                tolk.speak(format!("Background Music {}", status), true);
-                            } else if selection == 5 {
+                                let on_str = t!("common.on");
+                                let off_str = t!("common.off");
+                                let status = if s.bgm_enabled { &on_str } else { &off_str };
+                                tolk.speak(
+                                    t!("settings.bgm_status_spoken", status = status).to_string(),
+                                    true,
+                                );
+                            } else if selection == 6 {
                                 s.bgm_volume = (s.bgm_volume + 0.05).min(1.0);
                                 audio_engine.set_bgm_volume(s.bgm_volume);
                                 if !s.bgm_enabled && s.bgm_volume > 0.0 {
@@ -1364,28 +1504,38 @@ impl AppFrame {
                                     audio_engine.set_bgm_enabled(true);
                                 }
                                 tolk.speak(
-                                    format!(
-                                        "Background Music Volume {}%",
-                                        (s.bgm_volume * 100.0) as i32
-                                    ),
+                                    t!(
+                                        "settings.bgm_volume_spoken",
+                                        value = ((s.bgm_volume * 100.0) as i32).to_string()
+                                    )
+                                    .to_string(),
                                     true,
                                 );
-                            } else if selection == 6 {
+                            } else if selection == 7 {
                                 s.check_for_updates = !s.check_for_updates;
-                                let status = if s.check_for_updates { "On" } else { "Off" };
+                                let on_str = t!("common.on");
+                                let off_str = t!("common.off");
+                                let status = if s.check_for_updates {
+                                    &on_str
+                                } else {
+                                    &off_str
+                                };
                                 audio_engine.play_menu_move();
-                                tolk.speak(format!("Auto Update Notifications {}", status), true);
+                                tolk.speak(
+                                    t!("settings.auto_update_spoken", status = status).to_string(),
+                                    true,
+                                );
                             }
                             s.save();
                             screen_changed = true;
                         }
                         InputAction::Select | InputAction::Back => {
-                            if selection == 1 && action == InputAction::Select {
+                            if selection == 2 && action == InputAction::Select {
                                 audio_engine.play_menu_select();
                                 *screen_state.lock().unwrap() =
                                     AppScreen::SpeechVerbosity { selection: 0 };
                                 screen_changed = true;
-                            } else if selection == 7 || action == InputAction::Back {
+                            } else if selection == 8 || action == InputAction::Back {
                                 audio_engine.play_menu_select();
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
@@ -1419,35 +1569,52 @@ impl AppFrame {
                             let mut s = settings.lock().unwrap();
                             if selection == 0 {
                                 s.piece_callouts_technical = !s.piece_callouts_technical;
+                                let terse_str = t!("settings.piece_callouts_terse");
+                                let desc_str = t!("settings.piece_callouts_descriptive");
                                 let status = if s.piece_callouts_technical {
-                                    "Terse"
+                                    &terse_str
                                 } else {
-                                    "Descriptive"
+                                    &desc_str
                                 };
-                                tolk.speak(format!("Piece Callouts: {}", status), true);
+                                tolk.speak(
+                                    t!("settings.piece_callouts_spoken", status = status)
+                                        .to_string(),
+                                    true,
+                                );
                             } else if selection == 1 {
                                 s.scoring_details_advanced = !s.scoring_details_advanced;
+                                let adv_str = t!("settings.scoring_details_advanced");
+                                let sim_str = t!("settings.scoring_details_simple");
                                 let status = if s.scoring_details_advanced {
-                                    "Advanced"
+                                    &adv_str
                                 } else {
-                                    "Simple"
+                                    &sim_str
                                 };
-                                tolk.speak(format!("Scoring Details: {}", status), true);
+                                tolk.speak(
+                                    t!("settings.scoring_details_spoken", status = status)
+                                        .to_string(),
+                                    true,
+                                );
                             } else if selection == 2 {
                                 s.zone_alerts = !s.zone_alerts;
-                                let status = if s.zone_alerts { "On" } else { "Off" };
-                                tolk.speak(format!("Zone Alerts: {}", status), true);
+                                let on_str = t!("common.on");
+                                let off_str = t!("common.off");
+                                let status = if s.zone_alerts { &on_str } else { &off_str };
+                                tolk.speak(
+                                    t!("settings.zone_alerts_spoken", status = status).to_string(),
+                                    true,
+                                );
                             } else if selection == 3 && action == InputAction::Select {
                                 audio_engine.play_menu_select();
                                 *screen_state.lock().unwrap() =
-                                    AppScreen::Settings { selection: 1 };
+                                    AppScreen::Settings { selection: 2 };
                             }
                             s.save();
                             screen_changed = true;
                         }
                         InputAction::Back => {
                             audio_engine.play_menu_select();
-                            *screen_state.lock().unwrap() = AppScreen::Settings { selection: 1 };
+                            *screen_state.lock().unwrap() = AppScreen::Settings { selection: 2 };
                             screen_changed = true;
                         }
                         _ => {}
@@ -1622,25 +1789,24 @@ impl AppFrame {
                                             match new_status {
                                                 UpdateStatus::Available(info) => {
                                                     tolk_bg.speak(
-                                                        format!(
-                                                            "Update Available: Version {}",
-                                                            info.version
-                                                        ),
+                                                        t!(
+                                                            "updater.spoken_update_available_status",
+                                                            version = &info.version
+                                                        )
+                                                        .to_string(),
                                                         true,
                                                     );
                                                 }
                                                 UpdateStatus::UpToDate => {
                                                     tolk_bg.speak(
-                                                        "You are using the latest version of Audio Tetris.",
+                                                        t!("updater.spoken_up_to_date").to_string(),
                                                         true,
                                                     );
                                                 }
                                                 UpdateStatus::Error(e) => {
                                                     tolk_bg.speak(
-                                                        format!(
-                                                            "Error checking for updates: {}",
-                                                            e
-                                                        ),
+                                                        t!("updater.spoken_error", err = &e)
+                                                            .to_string(),
                                                         true,
                                                     );
                                                 }
@@ -1681,21 +1847,24 @@ impl AppFrame {
                                     let diff = settings.lock().unwrap().difficulty;
                                     let mut gs = game_state.lock().unwrap();
                                     *gs = GameState::new(diff);
-                                    tolk.output("New Game Started!", true);
+                                    tolk.output(t!("in_game.new_game_started").to_string(), true);
                                     let callout_tech =
                                         settings.lock().unwrap().piece_callouts_technical;
+                                    let p_name =
+                                        gs.current_piece.t_type.localized_name(callout_tech);
                                     tolk.output(
-                                        format!(
-                                            "{} spawned",
-                                            gs.current_piece.t_type.as_str(callout_tech)
-                                        ),
+                                        t!("in_game.piece_spawned", piece = &p_name).to_string(),
                                         false,
                                     );
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                     if let Some(spawned) = gs.item_spawned {
                                         audio_engine.play_item_spawn();
                                         tolk.output(
-                                            format!("{} spawned!", spawned.as_str()),
+                                            t!(
+                                                "in_game.item_spawned",
+                                                item = &spawned.localized_name()
+                                            )
+                                            .to_string(),
                                             false,
                                         );
                                     }
@@ -1712,7 +1881,10 @@ impl AppFrame {
                                 }
                                 ConfirmAction::AbandonGame => {
                                     *game_in_progress.lock().unwrap() = false;
-                                    tolk.output("Game Abandoned", true);
+                                    tolk.output(
+                                        t!("confirm_dialog.game_abandoned").to_string(),
+                                        true,
+                                    );
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 0 };
                                 }
@@ -1721,7 +1893,7 @@ impl AppFrame {
                                     return;
                                 }
                                 ConfirmAction::UpdateApp(ref info) => {
-                                    tolk.output("Downloading update...", true);
+                                    tolk.output(t!("updater.spoken_downloading").to_string(), true);
                                     let download_url = info.download_url.clone();
                                     *screen_state.lock().unwrap() = AppScreen::Update {
                                         selection: 0,
@@ -1734,7 +1906,14 @@ impl AppFrame {
                                         if let Err(e) =
                                             updater::perform_in_place_update(&download_url)
                                         {
-                                            tolk_bg.speak(format!("Update failed: {}", e), true);
+                                            tolk_bg.speak(
+                                                t!(
+                                                    "updater.spoken_update_failed",
+                                                    err = &e.to_string()
+                                                )
+                                                .to_string(),
+                                                true,
+                                            );
                                         }
                                     });
                                 }
@@ -1771,7 +1950,7 @@ impl AppFrame {
 
                         match action {
                             InputAction::Back => {
-                                tolk.output("Game Paused", true);
+                                tolk.output(t!("pause_menu.paused").to_string(), true);
                                 *screen_state.lock().unwrap() =
                                     AppScreen::PauseMenu { selection: 0 };
                                 screen_changed = true;
@@ -1780,7 +1959,8 @@ impl AppFrame {
                                 let max_h = gs.max_column_height();
                                 audio_engine.play_radar_sweep(gs.get_topography());
                                 tolk.output(
-                                    format!("Radar sweep: highest stack height {}", max_h),
+                                    t!("in_game.radar_sweep", max_height = max_h.to_string())
+                                        .to_string(),
                                     true,
                                 );
                             }
@@ -1792,7 +1972,11 @@ impl AppFrame {
                                         audio_engine.play_aligned_sound();
                                     }
                                     tolk.output(
-                                        format!("Left, column {}", gs.current_piece.left_column()),
+                                        t!(
+                                            "in_game.move_left",
+                                            col = gs.current_piece.left_column().to_string()
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                 } else {
@@ -1808,7 +1992,11 @@ impl AppFrame {
                                         audio_engine.play_aligned_sound();
                                     }
                                     tolk.output(
-                                        format!("Right, column {}", gs.current_piece.left_column()),
+                                        t!(
+                                            "in_game.move_right",
+                                            col = gs.current_piece.left_column().to_string()
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                 } else {
@@ -1819,19 +2007,22 @@ impl AppFrame {
                                 if gs.rotate_cw() {
                                     audio_engine.play_rotate_cw_sound(gs.current_piece.y);
                                     let rot_deg = match gs.current_piece.rotation {
-                                        0 => "0 degrees",
-                                        1 => "90 degrees",
-                                        2 => "180 degrees",
-                                        3 => "270 degrees",
-                                        _ => "",
+                                        0 => t!("in_game.deg_0"),
+                                        1 => t!("in_game.deg_90"),
+                                        2 => t!("in_game.deg_180"),
+                                        3 => t!("in_game.deg_270"),
+                                        _ => std::borrow::Cow::Borrowed(""),
                                     };
                                     let left = gs.current_piece.left_column();
                                     let right = gs.current_piece.right_column();
                                     tolk.output(
-                                        format!(
-                                            "Rotated Right, {}. Columns {} through {}",
-                                            rot_deg, left, right
-                                        ),
+                                        t!(
+                                            "in_game.rotated_right",
+                                            deg = &rot_deg,
+                                            left = left.to_string(),
+                                            right = right.to_string()
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                 } else {
@@ -1842,19 +2033,22 @@ impl AppFrame {
                                 if gs.rotate_ccw() {
                                     audio_engine.play_rotate_ccw_sound(gs.current_piece.y);
                                     let rot_deg = match gs.current_piece.rotation {
-                                        0 => "0 degrees",
-                                        1 => "90 degrees",
-                                        2 => "180 degrees",
-                                        3 => "270 degrees",
-                                        _ => "",
+                                        0 => t!("in_game.deg_0"),
+                                        1 => t!("in_game.deg_90"),
+                                        2 => t!("in_game.deg_180"),
+                                        3 => t!("in_game.deg_270"),
+                                        _ => std::borrow::Cow::Borrowed(""),
                                     };
                                     let left = gs.current_piece.left_column();
                                     let right = gs.current_piece.right_column();
                                     tolk.output(
-                                        format!(
-                                            "Rotated Left, {}. Columns {} through {}",
-                                            rot_deg, left, right
-                                        ),
+                                        t!(
+                                            "in_game.rotated_left",
+                                            deg = &rot_deg,
+                                            left = left.to_string(),
+                                            right = right.to_string()
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                 } else {
@@ -1864,22 +2058,24 @@ impl AppFrame {
                             InputAction::PieceInfo => {
                                 let callout_tech =
                                     settings.lock().unwrap().piece_callouts_technical;
-                                let name = gs.current_piece.t_type.as_str(callout_tech);
+                                let name = gs.current_piece.t_type.localized_name(callout_tech);
                                 let left = gs.current_piece.left_column();
                                 let right = gs.current_piece.right_column();
                                 let width = gs.current_piece.width();
-                                let mut text = format!(
-                                    "Current piece: {}. Columns {} through {}. Width: {}.",
-                                    name, left, right, width
-                                );
-                                if let Some(held) = gs.hold_piece {
-                                    text.push_str(&format!(
-                                        " Held piece: {}.",
-                                        held.as_str(callout_tech)
-                                    ));
+                                let held_str = if let Some(held) = gs.hold_piece {
+                                    held.localized_name(callout_tech)
                                 } else {
-                                    text.push_str(" Held piece: None.");
-                                }
+                                    t!("in_game.piece_none").to_string()
+                                };
+                                let text = t!(
+                                    "in_game.current_piece_info",
+                                    piece = &name,
+                                    left = left.to_string(),
+                                    right = right.to_string(),
+                                    width = width.to_string(),
+                                    held = &held_str
+                                )
+                                .to_string();
                                 tolk.output(text, true);
                             }
                             InputAction::Hold => {
@@ -1892,17 +2088,18 @@ impl AppFrame {
                                         audio_engine.play_hold_sound();
                                     }
                                     tolk.output(
-                                        format!(
-                                            "Held {}. New piece: {}",
-                                            prev.as_str(callout_tech),
-                                            new_p.as_str(callout_tech)
-                                        ),
+                                        t!(
+                                            "in_game.held_piece",
+                                            prev = &prev.localized_name(callout_tech),
+                                            new = &new_p.localized_name(callout_tech)
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                     audio_engine.play_spawn_sound(gs.current_piece.t_type);
                                 } else {
                                     audio_engine.play_hold_denied_sound();
-                                    tolk.output("Already held piece this turn", true);
+                                    tolk.output(t!("in_game.already_held").to_string(), true);
                                 }
                             }
                             InputAction::Select => {}
@@ -1910,7 +2107,11 @@ impl AppFrame {
                                 if gs.soft_drop() {
                                     audio_engine.play_soft_drop_sound(gs.current_piece.y);
                                     tolk.output(
-                                        format!("Soft drop, row {}", gs.current_piece.y + 1),
+                                        t!(
+                                            "in_game.soft_drop",
+                                            row = (gs.current_piece.y + 1).to_string()
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                     if !gs.can_fall() && !gs.lock_delay_active {
@@ -1931,54 +2132,81 @@ impl AppFrame {
                                 if res.zone_lines_cleared_this_turn > 0 {
                                     audio_engine.play_clear_sound(res.zone_lines_cleared_this_turn);
                                     tolk.output(
-                                        format!(
-                                            "Zone cleared {} lines! Total zone lines: {}",
-                                            res.zone_lines_cleared_this_turn, gs.zone_lines_cleared
-                                        ),
+                                        t!(
+                                            "in_game.zone_cleared_lines",
+                                            cleared = res.zone_lines_cleared_this_turn.to_string(),
+                                            total = gs.zone_lines_cleared.to_string()
+                                        )
+                                        .to_string(),
                                         true,
                                     );
                                 } else if res.cleared_lines > 0 {
                                     audio_engine.play_clear_sound(res.cleared_lines);
-                                    let mut tts =
-                                        format!("Hard drop. Cleared {} lines!", res.cleared_lines);
+                                    let mut tts = t!(
+                                        "in_game.hard_drop_cleared",
+                                        cleared = res.cleared_lines.to_string()
+                                    )
+                                    .to_string();
                                     if res.is_t_spin {
                                         audio_engine.play_t_spin_sound();
                                         if scoring_advanced {
-                                            tts.push_str(" T-Spin!");
+                                            tts.push_str(&format!(" {}", t!("in_game.t_spin")));
                                         }
                                     }
                                     if res.b2b_bonus {
                                         audio_engine.play_b2b_sound();
                                         if scoring_advanced {
-                                            tts.push_str(" Back to back!");
+                                            tts.push_str(&format!(" {}", t!("in_game.b2b")));
                                         }
                                     }
                                     if res.combo > 1 && scoring_advanced {
-                                        tts.push_str(&format!(" {} Combo!", res.combo));
+                                        tts.push_str(&format!(
+                                            " {}",
+                                            t!(
+                                                "in_game.combo_bonus",
+                                                combo = res.combo.to_string()
+                                            )
+                                        ));
                                     }
                                     tts.push_str(&format!(
-                                        " Level: {}. Score: {}",
-                                        gs.level, gs.score
+                                        " {}",
+                                        t!(
+                                            "in_game.level_score_suffix",
+                                            level = gs.level.to_string(),
+                                            score = gs.score.to_string()
+                                        )
                                     ));
                                     tolk.output(tts, true);
                                 } else {
                                     if res.is_t_spin && scoring_advanced {
                                         audio_engine.play_t_spin_sound();
-                                        tolk.output(format!("T-Spin! Score: {}", gs.score), true);
+                                        tolk.output(
+                                            t!(
+                                                "in_game.t_spin_score",
+                                                score = gs.score.to_string()
+                                            )
+                                            .to_string(),
+                                            true,
+                                        );
                                     }
-                                    tolk.output(format!("Hard drop. Score: {}", gs.score), true);
+                                    tolk.output(
+                                        t!("in_game.hard_drop_score", score = gs.score.to_string())
+                                            .to_string(),
+                                        true,
+                                    );
                                 }
 
                                 if res.zone_meter_full && zone_alerts {
                                     audio_engine.play_zone_enter();
-                                    tolk.output("Zone Meter Full!", false);
+                                    tolk.output(t!("in_game.zone_meter_full").to_string(), false);
                                 }
 
                                 if gs.is_game_over {
                                     let _ = db.record_high_score(&gs);
                                     *game_in_progress.lock().unwrap() = false;
                                     tolk.output(
-                                        format!("Game Over! Final Score: {}", gs.score),
+                                        t!("in_game.game_over", score = gs.score.to_string())
+                                            .to_string(),
                                         true,
                                     );
                                     *screen_state.lock().unwrap() =
@@ -1988,20 +2216,28 @@ impl AppFrame {
                                     let callout_tech =
                                         settings.lock().unwrap().piece_callouts_technical;
                                     tolk.output(
-                                        gs.current_piece.t_type.as_str(callout_tech),
+                                        gs.current_piece.t_type.localized_name(callout_tech),
                                         false,
                                     );
                                     if let Some(acquired) = gs.item_acquired {
                                         audio_engine.play_item_acquire();
                                         tolk.output(
-                                            format!("Acquired {}!", acquired.as_str()),
+                                            t!(
+                                                "in_game.item_acquired",
+                                                item = &acquired.localized_name()
+                                            )
+                                            .to_string(),
                                             true,
                                         );
                                     }
                                     if let Some(spawned) = gs.item_spawned {
                                         audio_engine.play_item_spawn();
                                         tolk.output(
-                                            format!("{} spawned!", spawned.as_str()),
+                                            t!(
+                                                "in_game.item_spawned",
+                                                item = &spawned.localized_name()
+                                            )
+                                            .to_string(),
                                             false,
                                         );
                                     }
@@ -2011,10 +2247,13 @@ impl AppFrame {
                             InputAction::Zone => {
                                 if gs.start_zone() {
                                     audio_engine.play_zone_enter();
-                                    tolk.output("Zone Activated!", true);
+                                    tolk.output(t!("in_game.zone_activated").to_string(), true);
                                 } else {
                                     audio_engine.play_hold_denied_sound();
-                                    tolk.output("Not enough charge for Zone", true);
+                                    tolk.output(
+                                        t!("in_game.zone_not_enough_charge").to_string(),
+                                        true,
+                                    );
                                 }
                             }
                             InputAction::UseItem => {
@@ -2022,32 +2261,44 @@ impl AppFrame {
                                     audio_engine.play_item_use(res.item);
                                     if res.item == ItemType::Magnet && res.lines_cleared > 0 {
                                         audio_engine.play_clear_sound(res.lines_cleared);
-                                        let mut msg = format!(
-                                            "Used The Magnet! Cleared {} lines. Score: {}",
-                                            res.lines_cleared, gs.score
-                                        );
+                                        let mut msg = t!(
+                                            "in_game.used_magnet_cleared",
+                                            cleared = res.lines_cleared.to_string(),
+                                            score = gs.score.to_string()
+                                        )
+                                        .to_string();
                                         if let Some(acquired) = gs.item_acquired {
                                             audio_engine.play_item_acquire();
                                             msg.push_str(&format!(
-                                                " Acquired {}!",
-                                                acquired.as_str()
+                                                " {}",
+                                                t!(
+                                                    "in_game.item_acquired",
+                                                    item = &acquired.localized_name()
+                                                )
                                             ));
                                         }
                                         tolk.output(msg, true);
                                     } else {
-                                        let mut msg = format!("Used {}", res.item.as_str());
+                                        let mut msg = t!(
+                                            "in_game.used_item",
+                                            item = &res.item.localized_name()
+                                        )
+                                        .to_string();
                                         if let Some(acquired) = gs.item_acquired {
                                             audio_engine.play_item_acquire();
                                             msg.push_str(&format!(
-                                                ". Acquired {}!",
-                                                acquired.as_str()
+                                                " {}",
+                                                t!(
+                                                    "in_game.item_acquired",
+                                                    item = &acquired.localized_name()
+                                                )
                                             ));
                                         }
                                         tolk.output(msg, true);
                                     }
                                 } else {
                                     audio_engine.play_hold_denied_sound();
-                                    tolk.output("No item to use", true);
+                                    tolk.output(t!("in_game.no_item_to_use").to_string(), true);
                                 }
                             }
                             _ => {}
@@ -2059,18 +2310,24 @@ impl AppFrame {
                                 *screen_state.lock().unwrap() =
                                     AppScreen::KeyDescriber { esc_count: 1 };
                                 audio_engine.play_menu_move();
-                                tolk.output("Press Escape again to exit Keyboard Help Mode.", true);
+                                tolk.output(t!("key_describer.press_esc_again").to_string(), true);
                             } else {
                                 audio_engine.play_menu_select();
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::PauseMenu { selection: 0 };
-                                    tolk.output("Exited Keyboard Help Mode.", true);
+                                    tolk.output(
+                                        t!("key_describer.exited_help_mode").to_string(),
+                                        true,
+                                    );
                                 } else {
                                     *screen_state.lock().unwrap() =
                                         AppScreen::MainMenu { selection: 0 };
-                                    tolk.output("Exited Keyboard Help Mode.", true);
+                                    tolk.output(
+                                        t!("key_describer.exited_help_mode").to_string(),
+                                        true,
+                                    );
                                 }
                             }
                         } else {
@@ -2120,11 +2377,16 @@ impl AppFrame {
                         if lines > 0 {
                             audio_engine.play_clear_sound(lines);
                             tolk.output(
-                                format!("Zone ended! Cleared {} lines. Score: {}", lines, gs.score),
+                                t!(
+                                    "in_game.zone_ended_cleared",
+                                    cleared = lines.to_string(),
+                                    score = gs.score.to_string()
+                                )
+                                .to_string(),
                                 true,
                             );
                         } else {
-                            tolk.output("Zone ended.", true);
+                            tolk.output(t!("in_game.zone_ended").to_string(), true);
                         }
                     }
                 }
@@ -2145,43 +2407,63 @@ impl AppFrame {
                         if res.zone_lines_cleared_this_turn > 0 {
                             audio_engine.play_clear_sound(res.zone_lines_cleared_this_turn);
                             tolk.output(
-                                format!(
-                                    "Zone cleared {} lines! Total zone lines: {}",
-                                    res.zone_lines_cleared_this_turn, gs.zone_lines_cleared
-                                ),
+                                t!(
+                                    "in_game.zone_cleared_lines",
+                                    cleared = res.zone_lines_cleared_this_turn.to_string(),
+                                    total = gs.zone_lines_cleared.to_string()
+                                )
+                                .to_string(),
                                 true,
                             );
                         }
 
                         if res.zone_meter_full && zone_alerts {
                             audio_engine.play_zone_enter();
-                            tolk.output("Zone Meter Full!", true);
+                            tolk.output(t!("in_game.zone_meter_full").to_string(), true);
                         }
 
                         if res.cleared_lines > 0 {
                             audio_engine.play_clear_sound(res.cleared_lines);
-                            let mut tts = format!("Cleared {} lines!", res.cleared_lines);
+                            let mut tts = t!(
+                                "in_game.cleared_lines_count",
+                                count = res.cleared_lines.to_string()
+                            )
+                            .to_string();
                             if res.is_t_spin {
                                 audio_engine.play_t_spin_sound();
                                 if scoring_advanced {
-                                    tts.push_str(" T-Spin!");
+                                    tts.push_str(&format!(" {}", t!("in_game.t_spin")));
                                 }
                             }
                             if res.b2b_bonus {
                                 audio_engine.play_b2b_sound();
                                 if scoring_advanced {
-                                    tts.push_str(" Back to back!");
+                                    tts.push_str(&format!(" {}", t!("in_game.b2b")));
                                 }
                             }
                             if res.combo > 1 && scoring_advanced {
-                                tts.push_str(&format!(" {} Combo!", res.combo));
+                                tts.push_str(&format!(
+                                    " {}",
+                                    t!("in_game.combo_bonus", combo = res.combo.to_string())
+                                ));
                             }
-                            tts.push_str(&format!(" Level: {}. Score: {}", gs.level, gs.score));
+                            tts.push_str(&format!(
+                                " {}",
+                                t!(
+                                    "in_game.level_score_suffix",
+                                    level = gs.level.to_string(),
+                                    score = gs.score.to_string()
+                                )
+                            ));
                             tolk.output(tts, true);
                         } else {
                             if res.is_t_spin && scoring_advanced {
                                 audio_engine.play_t_spin_sound();
-                                tolk.output(format!("T-Spin! Score: {}", gs.score), true);
+                                tolk.output(
+                                    t!("in_game.t_spin_score", score = gs.score.to_string())
+                                        .to_string(),
+                                    true,
+                                );
                             }
                             audio_engine.play_lock_sound();
                         }
@@ -2189,19 +2471,33 @@ impl AppFrame {
                         if gs.is_game_over {
                             let _ = db.record_high_score(&gs);
                             *in_prog.lock().unwrap() = false;
-                            tolk.output(format!("Game Over! Final Score: {}", gs.score), true);
+                            tolk.output(
+                                t!("in_game.game_over", score = gs.score.to_string()).to_string(),
+                                true,
+                            );
                             *screen.lock().unwrap() = AppScreen::MainMenu { selection: 0 };
                         } else {
                             audio_engine.play_spawn_sound(gs.current_piece.t_type);
                             let callout_tech = settings.lock().unwrap().piece_callouts_technical;
-                            tolk.output(gs.current_piece.t_type.as_str(callout_tech), false);
+                            tolk.output(
+                                gs.current_piece.t_type.localized_name(callout_tech),
+                                false,
+                            );
                             if let Some(acquired) = gs.item_acquired {
                                 audio_engine.play_item_acquire();
-                                tolk.output(format!("Acquired {}!", acquired.as_str()), true);
+                                tolk.output(
+                                    t!("in_game.item_acquired", item = &acquired.localized_name())
+                                        .to_string(),
+                                    true,
+                                );
                             }
                             if let Some(spawned) = gs.item_spawned {
                                 audio_engine.play_item_spawn();
-                                tolk.output(format!("{} spawned!", spawned.as_str()), false);
+                                tolk.output(
+                                    t!("in_game.item_spawned", item = &spawned.localized_name())
+                                        .to_string(),
+                                    false,
+                                );
                             }
                         }
                         render_in_closure(true, false);

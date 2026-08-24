@@ -1,29 +1,31 @@
-pub fn get_main_menu_options(in_prog: bool) -> Vec<&'static str> {
+use rust_i18n::t;
+
+pub fn get_main_menu_options(in_prog: bool) -> Vec<String> {
     if in_prog {
         vec![
-            "Resume Game",
-            "New Game",
-            "Tutorial",
-            "Save Game",
-            "Load Game",
-            "High Scores & Stats",
-            "How to Play",
-            "Settings",
-            "About",
-            "Update",
-            "Quit",
+            t!("main_menu.resume_game").to_string(),
+            t!("main_menu.new_game").to_string(),
+            t!("main_menu.tutorial").to_string(),
+            t!("main_menu.save_game").to_string(),
+            t!("main_menu.load_game").to_string(),
+            t!("main_menu.leaderboard").to_string(),
+            t!("main_menu.how_to_play").to_string(),
+            t!("main_menu.settings").to_string(),
+            t!("main_menu.about").to_string(),
+            t!("main_menu.update").to_string(),
+            t!("main_menu.quit").to_string(),
         ]
     } else {
         vec![
-            "New Game",
-            "Tutorial",
-            "Load Game",
-            "High Scores & Stats",
-            "How to Play",
-            "Settings",
-            "About",
-            "Update",
-            "Quit",
+            t!("main_menu.new_game").to_string(),
+            t!("main_menu.tutorial").to_string(),
+            t!("main_menu.load_game").to_string(),
+            t!("main_menu.leaderboard").to_string(),
+            t!("main_menu.how_to_play").to_string(),
+            t!("main_menu.settings").to_string(),
+            t!("main_menu.about").to_string(),
+            t!("main_menu.update").to_string(),
+            t!("main_menu.quit").to_string(),
         ]
     }
 }
@@ -31,7 +33,7 @@ pub fn get_main_menu_options(in_prog: bool) -> Vec<&'static str> {
 pub fn render_main_menu(selection: usize, in_prog: bool) -> (String, String) {
     let options = get_main_menu_options(in_prog);
     let sel = selection.min(options.len().saturating_sub(1));
-    let mut text = String::from("Main Menu\n\n");
+    let mut text = format!("{}\n\n", t!("main_menu.title"));
     for (i, opt) in options.iter().enumerate() {
         if i == sel {
             text.push_str(&format!("->   {}\n", opt));
@@ -39,7 +41,13 @@ pub fn render_main_menu(selection: usize, in_prog: bool) -> (String, String) {
             text.push_str(&format!("   {}\n", opt));
         }
     }
-    let spoken = format!("{} {} of {}", options[sel], sel + 1, options.len());
+    let spoken = t!(
+        "common.item_counter",
+        item = &options[sel],
+        current = (sel + 1).to_string(),
+        total = options.len().to_string()
+    )
+    .to_string();
     (text, spoken)
 }
 

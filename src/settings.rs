@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
+use crate::i18n::Language;
+
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 pub enum Difficulty {
     Easy,
@@ -17,11 +19,20 @@ impl Difficulty {
             Difficulty::Difficult => "Difficult",
         }
     }
+
+    pub fn localized_str(&self) -> String {
+        match self {
+            Difficulty::Easy => rust_i18n::t!("settings.difficulty_easy").to_string(),
+            Difficulty::Moderate => rust_i18n::t!("settings.difficulty_moderate").to_string(),
+            Difficulty::Difficult => rust_i18n::t!("settings.difficulty_difficult").to_string(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default)]
 pub struct Settings {
+    pub language: Language,
     pub sfx_volume: f32,   // 0.0 to 1.0
     pub bgm_volume: f32,   // 0.0 to 1.0
     pub voice_volume: f32, // 0.0 to 1.0 — informational; actual voice volume controlled by screen reader
@@ -43,6 +54,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            language: Language::from_system_locale(),
             sfx_volume: 0.2,
             bgm_volume: 0.2,
             voice_volume: 1.0,

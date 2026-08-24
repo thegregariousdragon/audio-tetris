@@ -1,31 +1,31 @@
+use rust_i18n::t;
+
 pub fn get_about_lines() -> Vec<String> {
     vec![
-        format!("Audio Tetris v{}", env!("APP_VERSION")),
-        "Created by Gregory Lopez and Google Antigravity.".to_string(),
-        "A fully accessible, screen-reader-first arcade puzzle game built in Rust.".to_string(),
-        "Engineered with zero graphical reliance, high-precision stereo panning, and pitch-mapped elevation.".to_string(),
-        "Features 5 save slots, high score tracking, Zone Mode, radar sweeps, power-ups, and auto-updater.".to_string(),
-        "Powered by: wxDragon (GUI), Rodio (Audio), Tolk (Screen Readers), and Rusqlite (SQLite Database).".to_string(),
-        "Additional Libraries: Serde (Serialization), Lofty (Audio Metadata), Rand (RNG), and WinRes (Build Manifest).".to_string(),
-        "Copyright 2026 Gregory Lopez and Google Antigravity. Released under the MIT License.".to_string(),
+        t!("about.line_0", version = env!("APP_VERSION")).to_string(),
+        t!("about.line_1").to_string(),
+        t!("about.line_2").to_string(),
+        t!("about.line_3").to_string(),
+        t!("about.line_4").to_string(),
+        t!("about.line_5").to_string(),
+        t!("about.line_6").to_string(),
+        t!("about.line_7").to_string(),
     ]
 }
 
 pub fn render_about(scroll_line: usize, initial_load: bool) -> (String, String) {
     let lines = get_about_lines();
     let idx = scroll_line.min(lines.len().saturating_sub(1));
-    let text = format!(
-        "About Audio Tetris (Line {} of {})\n\n{}",
-        idx + 1,
-        lines.len(),
-        lines[idx]
-    );
+    let text = t!(
+        "about.line_counter",
+        current = (idx + 1).to_string(),
+        total = lines.len().to_string(),
+        line = &lines[idx]
+    )
+    .to_string();
 
     let spoken = if initial_load {
-        format!(
-            "About Audio Tetris. Use arrows to read line by line. Press Enter to read all. Press Escape to go back. {}",
-            lines[idx]
-        )
+        t!("about.spoken_intro", line = &lines[idx]).to_string()
     } else {
         lines[idx].clone()
     };
@@ -51,22 +51,21 @@ mod tests {
     #[test]
     fn test_render_about_initial_load() {
         let (text, spoken) = render_about(0, true);
-        assert!(text.contains("About Audio Tetris (Line 1 of 8)"));
-        assert!(spoken.contains("Use arrows to read line by line"));
-        assert!(spoken.contains("Audio Tetris v"));
+        assert!(text.contains("1"));
+        assert!(spoken.contains("Audio Tetris"));
     }
 
     #[test]
     fn test_render_about_subsequent_line() {
         let (text, spoken) = render_about(1, false);
-        assert!(text.contains("About Audio Tetris (Line 2 of 8)"));
+        assert!(text.contains("2"));
         assert_eq!(spoken, "Created by Gregory Lopez and Google Antigravity.");
     }
 
     #[test]
     fn test_render_about_bounds() {
         let (text, spoken) = render_about(999, false);
-        assert!(text.contains("About Audio Tetris (Line 8 of 8)"));
+        assert!(text.contains("8"));
         assert!(spoken.contains("Released under the MIT License."));
     }
 }

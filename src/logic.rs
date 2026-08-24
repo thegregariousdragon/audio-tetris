@@ -31,11 +31,20 @@ pub struct ItemUseResult {
 }
 
 impl ItemType {
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             ItemType::Magnet => "The Magnet",
             ItemType::Nuke => "The Nuke",
             ItemType::Laser => "The Laser",
+        }
+    }
+
+    pub fn localized_name(&self) -> String {
+        match self {
+            ItemType::Magnet => rust_i18n::t!("items.magnet").to_string(),
+            ItemType::Nuke => rust_i18n::t!("items.nuke").to_string(),
+            ItemType::Laser => rust_i18n::t!("items.laser").to_string(),
         }
     }
 }
@@ -62,6 +71,30 @@ impl TetrominoType {
                 TetrominoType::S => "Right zig-zag",
                 TetrominoType::T => "T-shape",
                 TetrominoType::Z => "Left zig-zag",
+            }
+        }
+    }
+
+    pub fn localized_name(&self, piece_callouts_technical: bool) -> String {
+        if piece_callouts_technical {
+            match self {
+                TetrominoType::I => rust_i18n::t!("pieces.technical_i").to_string(),
+                TetrominoType::J => rust_i18n::t!("pieces.technical_j").to_string(),
+                TetrominoType::L => rust_i18n::t!("pieces.technical_l").to_string(),
+                TetrominoType::O => rust_i18n::t!("pieces.technical_o").to_string(),
+                TetrominoType::S => rust_i18n::t!("pieces.technical_s").to_string(),
+                TetrominoType::T => rust_i18n::t!("pieces.technical_t").to_string(),
+                TetrominoType::Z => rust_i18n::t!("pieces.technical_z").to_string(),
+            }
+        } else {
+            match self {
+                TetrominoType::I => rust_i18n::t!("pieces.descriptive_i").to_string(),
+                TetrominoType::J => rust_i18n::t!("pieces.descriptive_j").to_string(),
+                TetrominoType::L => rust_i18n::t!("pieces.descriptive_l").to_string(),
+                TetrominoType::O => rust_i18n::t!("pieces.descriptive_o").to_string(),
+                TetrominoType::S => rust_i18n::t!("pieces.descriptive_s").to_string(),
+                TetrominoType::T => rust_i18n::t!("pieces.descriptive_t").to_string(),
+                TetrominoType::Z => rust_i18n::t!("pieces.descriptive_z").to_string(),
             }
         }
     }
