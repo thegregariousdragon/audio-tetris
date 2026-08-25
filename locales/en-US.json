@@ -52,8 +52,8 @@
     "difficulty_easy": "Easy",
     "difficulty_moderate": "Moderate",
     "difficulty_difficult": "Difficult",
-    "visual_theme_menu": "Visual & Theme Settings",
-    "visual_theme_title": "Visual & Theme Settings",
+    "visual_theme_menu": "Visual Settings",
+    "visual_theme_title": "Visual Settings",
     "theme_option": "Theme: %{value}",
     "theme_system": "System (Auto)",
     "theme_dark": "Dark",
@@ -84,7 +84,15 @@
     "auto_update_spoken": "Auto Update Notifications %{status}",
     "piece_callouts_spoken": "Piece Callouts: %{status}",
     "scoring_details_spoken": "Scoring Details: %{status}",
-    "zone_alerts_spoken": "Zone Alerts: %{status}"
+    "zone_alerts_spoken": "Zone Alerts: %{status}",
+    "screen_reader_mode": "Screen Reader Mode: %{status}",
+    "screen_reader_mode_spoken": "Screen Reader Mode %{status}",
+    "screen_reader_disable_prompt": "Screen reader mode is currently on. Press F12 again within %{seconds} seconds to turn it off.",
+    "screen_reader_enable_prompt": "Screen reader mode is currently off. Press F12 again within %{seconds} seconds to turn it on.",
+    "screen_reader_enabled": "Screen reader mode on.",
+    "screen_reader_disabled": "Screen reader mode off.",
+    "screen_reader_still_enabled": "Screen reader mode remains on.",
+    "screen_reader_still_disabled": "Screen reader mode remains off."
   },
   "in_game": {
     "game_started": "New Game Started!",

@@ -84,7 +84,15 @@
     "auto_update_spoken": "자동 업데이트 알림 %{status}",
     "piece_callouts_spoken": "블록 안내: %{status}",
     "scoring_details_spoken": "점수 상세 안내: %{status}",
-    "zone_alerts_spoken": "존 알림: %{status}"
+    "zone_alerts_spoken": "존 알림: %{status}",
+    "screen_reader_mode": "Screen Reader Mode: %{status}",
+    "screen_reader_mode_spoken": "Screen Reader Mode %{status}",
+    "screen_reader_disable_prompt": "Screen reader mode is currently on. Press F12 again within %{seconds} seconds to turn it off.",
+    "screen_reader_enable_prompt": "Screen reader mode is currently off. Press F12 again within %{seconds} seconds to turn it on.",
+    "screen_reader_enabled": "Screen reader mode on.",
+    "screen_reader_disabled": "Screen reader mode off.",
+    "screen_reader_still_enabled": "Screen reader mode remains on.",
+    "screen_reader_still_disabled": "Screen reader mode remains off."
   },
   "in_game": {
     "game_started": "새 게임이 시작되었습니다!",

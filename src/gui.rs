@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use wxdragon::color::Colour;
 use wxdragon::font::{Font, FontFamily, FontStyle, FontWeight};
 use wxdragon::prelude::*;
@@ -15,8 +17,12 @@ use crate::screens::{
 };
 use crate::settings::{Difficulty, Settings, WindowSizeMode};
 use crate::updater::{self, UpdateStatus};
+use crate::visuals;
 use rust_i18n::t;
 use tolk::Tolk;
+
+const SCREEN_READER_TOGGLE_KEY: i32 = 351; // wxWidgets WXK_F12
+const SCREEN_READER_TOGGLE_CONFIRM_SECS: u64 = 5;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum InputAction {
@@ -65,6 +71,84 @@ pub fn get_action_description(action: InputAction) -> String {
     }
 }
 
+fn should_use_menu_music(screen: &AppScreen, game_in_progress: bool) -> bool {
+    match screen {
+        AppScreen::Tutorial { .. } | AppScreen::InGame => false,
+        AppScreen::PauseMenu { .. }
+        | AppScreen::SaveScreen { .. }
+        | AppScreen::LoadScreen { .. }
+            if game_in_progress =>
+        {
+            false
+        }
+        AppScreen::ConfirmDialog {
+            action: ConfirmAction::AbandonGame,
+        } => false,
+        _ => true,
+    }
+}
+
+pub struct ScreenReader {
+    inner: Arc<Tolk>,
+    enabled: Arc<AtomicBool>,
+    visual_status: Arc<Mutex<Option<visuals::VisualStatus>>>,
+}
+
+impl ScreenReader {
+    pub fn new(enabled: bool, visual_status: Arc<Mutex<Option<visuals::VisualStatus>>>) -> Self {
+        Self {
+            inner: Tolk::new(),
+            enabled: Arc::new(AtomicBool::new(enabled)),
+            visual_status,
+        }
+    }
+
+    pub fn try_sapi(&self, enable: bool) {
+        if self.is_enabled() {
+            self.inner.try_sapi(enable);
+        }
+    }
+
+    pub fn output<S: std::fmt::Display>(&self, text: S, interrupt: bool) {
+        let text = text.to_string();
+        self.publish_visual_status(&text);
+        if self.is_enabled() {
+            self.inner.output(text, interrupt);
+        }
+    }
+
+    pub fn speak<S: std::fmt::Display>(&self, text: S, interrupt: bool) {
+        let text = text.to_string();
+        self.publish_visual_status(&text);
+        if self.is_enabled() {
+            self.inner.speak(text, interrupt);
+        }
+    }
+
+    pub fn speak_forced<S: std::fmt::Display>(&self, text: S, interrupt: bool) {
+        let text = text.to_string();
+        self.publish_visual_status(&text);
+        self.inner.speak(text, interrupt);
+    }
+
+    fn is_enabled(&self) -> bool {
+        self.enabled.load(Ordering::SeqCst)
+    }
+
+    pub fn set_enabled(&self, enabled: bool) {
+        self.enabled.store(enabled, Ordering::SeqCst);
+    }
+
+    fn publish_visual_status(&self, text: &str) {
+        if text.trim().is_empty() {
+            return;
+        }
+        if let Ok(mut status) = self.visual_status.lock() {
+            *status = Some(visuals::VisualStatus::new(text));
+        }
+    }
+}
+
 pub struct AppFrame {
     frame: Frame,
     panel: Panel,
@@ -72,12 +156,15 @@ pub struct AppFrame {
     game_state: Arc<Mutex<GameState>>,
     audio_engine: Rc<AudioEngine>,
     timer: Rc<RefCell<wxdragon::timer::Timer<Frame>>>,
-    tolk: Arc<Tolk>,
+    tolk: Arc<ScreenReader>,
     settings: Arc<Mutex<Settings>>,
     screen: Arc<Mutex<AppScreen>>,
     game_in_progress: Arc<Mutex<bool>>,
     db: Arc<Database>,
     tutorial_state: Arc<Mutex<tutorial_screen::TutorialState>>,
+    visual_assets: Rc<visuals::VisualAssets>,
+    visual_text: Arc<Mutex<String>>,
+    visual_status: Arc<Mutex<Option<visuals::VisualStatus>>>,
 }
 
 impl AppFrame {
@@ -129,11 +216,14 @@ impl AppFrame {
     }
 
     pub fn new() -> Self {
-        let tolk = Tolk::new();
-        tolk.try_sapi(true);
-
         let settings_data = Settings::load();
         let settings = Arc::new(Mutex::new(settings_data.clone()));
+        let visual_status = Arc::new(Mutex::new(None));
+        let tolk = Arc::new(ScreenReader::new(
+            settings_data.screen_reader_enabled,
+            visual_status.clone(),
+        ));
+        tolk.try_sapi(true);
 
         let db = Arc::new(Database::new("audio_tetris.db").expect("Failed to initialize database"));
         let initial_screen = if !settings_data.tutorial_completed {
@@ -165,6 +255,7 @@ impl AppFrame {
         let panel = Panel::builder(&frame)
             .with_style(PanelStyle::BorderNone)
             .build();
+        panel.set_background_style(BackgroundStyle::Paint);
 
         let sizer = BoxSizer::builder(Orientation::Vertical).build();
 
@@ -198,6 +289,8 @@ impl AppFrame {
         let game_state = Arc::new(Mutex::new(GameState::new(settings_data.difficulty)));
         let audio_engine = Rc::new(AudioEngine::new(&settings_data).unwrap());
         let timer = Rc::new(RefCell::new(wxdragon::timer::Timer::new(&frame)));
+        let visual_assets = Rc::new(visuals::VisualAssets::load());
+        let visual_text = Arc::new(Mutex::new(String::new()));
 
         let app_frame = Self {
             frame,
@@ -212,6 +305,9 @@ impl AppFrame {
             game_in_progress,
             db,
             tutorial_state,
+            visual_assets,
+            visual_text,
+            visual_status,
         };
 
         if settings_data.check_for_updates {
@@ -278,6 +374,8 @@ impl AppFrame {
         let screen = self.screen.lock().unwrap().clone();
         let s = self.settings.lock().unwrap();
         let in_prog = *self.game_in_progress.lock().unwrap();
+        self.audio_engine
+            .set_menu_music_active(should_use_menu_music(&screen, in_prog));
 
         let (display_text, spoken_text) = match screen {
             AppScreen::TutorialPrompt => tutorial_prompt::render_tutorial_prompt(),
@@ -331,8 +429,12 @@ impl AppFrame {
             }
         };
 
-        self.text_display.set_label(&display_text);
+        if let Ok(mut text) = self.visual_text.lock() {
+            *text = display_text;
+        }
+        self.text_display.set_label("");
         self.panel.layout();
+        self.panel.refresh(true, None);
 
         if speak && !spoken_text.is_empty() {
             let interrupt = !matches!(screen, AppScreen::Update { .. });
@@ -352,6 +454,11 @@ impl AppFrame {
         let tutorial_state = self.tutorial_state.clone();
         let frame = self.frame;
         let panel = self.panel;
+        let visual_assets = self.visual_assets.clone();
+        let visual_text = self.visual_text.clone();
+        let visual_status = self.visual_status.clone();
+        let screen_reader_toggle_pending: Rc<RefCell<Option<Instant>>> =
+            Rc::new(RefCell::new(None));
 
         let render_in_closure = {
             let screen_state = screen_state.clone();
@@ -361,11 +468,14 @@ impl AppFrame {
             let tolk = tolk_instance.clone();
             let db = db.clone();
             let tutorial_state = tutorial_state.clone();
+            let audio_engine = audio_engine.clone();
+            let visual_text = visual_text.clone();
 
             move |speak: bool, initial_load: bool| {
                 let screen = screen_state.lock().unwrap().clone();
                 let s = settings.lock().unwrap();
                 let in_prog = *game_in_progress.lock().unwrap();
+                audio_engine.set_menu_music_active(should_use_menu_music(&screen, in_prog));
 
                 let (display_text, spoken_text) = match screen {
                     AppScreen::TutorialPrompt => tutorial_prompt::render_tutorial_prompt(),
@@ -425,8 +535,12 @@ impl AppFrame {
                     }
                 };
 
-                text_ctrl.set_label(&display_text);
+                if let Ok(mut text) = visual_text.lock() {
+                    *text = display_text;
+                }
+                text_ctrl.set_label("");
                 panel.layout();
+                panel.refresh(true, None);
                 if speak && !spoken_text.is_empty() {
                     let interrupt = !matches!(screen, AppScreen::Update { .. });
                     tolk.output(&spoken_text, interrupt);
@@ -435,6 +549,48 @@ impl AppFrame {
         };
 
         let last_rendered_screen = Rc::new(RefCell::new(screen_state.lock().unwrap().clone()));
+
+        panel.on_paint({
+            let panel_for_paint = panel;
+            let screen_state = screen_state.clone();
+            let game_state = game_state.clone();
+            let game_in_progress = game_in_progress.clone();
+            let visual_assets = visual_assets.clone();
+            let visual_text = visual_text.clone();
+            let visual_status = visual_status.clone();
+
+            move |_| {
+                let dc = AutoBufferedPaintDC::new(&panel_for_paint);
+                let screen = screen_state.lock().unwrap().clone();
+                let gs = game_state.lock().unwrap();
+                let in_prog = *game_in_progress.lock().unwrap();
+                let is_dark_mode = true;
+                let display_text = visual_text
+                    .lock()
+                    .map(|text| text.clone())
+                    .unwrap_or_default();
+                let status = visual_status.lock().ok().and_then(|status| status.clone());
+                visuals::draw_app(
+                    &dc,
+                    &visual_assets,
+                    &screen,
+                    &gs,
+                    visuals::VisualRenderState {
+                        game_in_progress: in_prog,
+                        is_dark_mode,
+                        display_text: &display_text,
+                        visual_status: status.as_ref(),
+                    },
+                );
+            }
+        });
+
+        panel.on_size({
+            let panel_for_size = panel;
+            move |_| {
+                panel_for_size.refresh(true, None);
+            }
+        });
 
         // 1. KEY DOWN HANDLER
         let on_action = {
@@ -450,16 +606,19 @@ impl AppFrame {
 
             Rc::new(RefCell::new(move |action: InputAction| {
                 let current_screen = screen_state.lock().unwrap().clone();
+                let was_in_game = current_screen == AppScreen::InGame;
                 let mut screen_changed = false;
                 let mut is_initial_load = false;
 
                 // Global Music Controls (except in KeyDescriber mode)
                 if !matches!(current_screen, AppScreen::KeyDescriber { .. }) {
-                    if action == InputAction::NextTrack {
+                    let in_prog = *game_in_progress.lock().unwrap();
+                    let allow_track_switch = !should_use_menu_music(&current_screen, in_prog);
+                    if action == InputAction::NextTrack && allow_track_switch {
                         let track = audio_engine.next_track();
                         tolk.output(t!("in_game.bgm_playing", track = &track).to_string(), true);
                         return;
-                    } else if action == InputAction::PrevTrack {
+                    } else if action == InputAction::PrevTrack && allow_track_switch {
                         let track = audio_engine.prev_track();
                         tolk.output(t!("in_game.bgm_playing", track = &track).to_string(), true);
                         return;
@@ -1647,14 +1806,14 @@ impl AppFrame {
                     },
                     AppScreen::VisualSettings { selection } => match action {
                         InputAction::Up => {
-                            let new_sel = if selection > 0 { selection - 1 } else { 3 };
+                            let new_sel = if selection > 0 { selection - 1 } else { 2 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::VisualSettings { selection: new_sel };
                             audio_engine.play_menu_move();
                             screen_changed = true;
                         }
                         InputAction::Down => {
-                            let new_sel = if selection < 3 { selection + 1 } else { 0 };
+                            let new_sel = if selection < 2 { selection + 1 } else { 0 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::VisualSettings { selection: new_sel };
                             audio_engine.play_menu_move();
@@ -1663,15 +1822,6 @@ impl AppFrame {
                         InputAction::Left => {
                             let mut s = settings.lock().unwrap();
                             if selection == 0 {
-                                s.theme = s.theme.prev();
-                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
-                                audio_engine.play_menu_move();
-                                tolk.speak(
-                                    t!("settings.theme_spoken", value = s.theme.localized_str())
-                                        .to_string(),
-                                    true,
-                                );
-                            } else if selection == 1 {
                                 s.window_size = s.window_size.prev();
                                 Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
                                 audio_engine.play_menu_move();
@@ -1683,7 +1833,7 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 2 {
+                            } else if selection == 1 {
                                 s.font_scale = s.font_scale.prev();
                                 Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
                                 audio_engine.play_menu_move();
@@ -1702,15 +1852,6 @@ impl AppFrame {
                         InputAction::Right | InputAction::Select => {
                             let mut s = settings.lock().unwrap();
                             if selection == 0 {
-                                s.theme = s.theme.next();
-                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
-                                audio_engine.play_menu_move();
-                                tolk.speak(
-                                    t!("settings.theme_spoken", value = s.theme.localized_str())
-                                        .to_string(),
-                                    true,
-                                );
-                            } else if selection == 1 {
                                 s.window_size = s.window_size.next();
                                 Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
                                 audio_engine.play_menu_move();
@@ -1722,7 +1863,7 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 2 {
+                            } else if selection == 1 {
                                 s.font_scale = s.font_scale.next();
                                 Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
                                 audio_engine.play_menu_move();
@@ -1734,7 +1875,7 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 3 && action == InputAction::Select {
+                            } else if selection == 2 && action == InputAction::Select {
                                 audio_engine.play_menu_select();
                                 *screen_state.lock().unwrap() =
                                     AppScreen::Settings { selection: 2 };
@@ -2540,7 +2681,7 @@ impl AppFrame {
                     }
                 }
 
-                if screen_changed {
+                if screen_changed || was_in_game {
                     *last_rendered.borrow_mut() = screen_state.lock().unwrap().clone();
                     render_in_closure(true, is_initial_load);
                 }
@@ -2556,12 +2697,14 @@ impl AppFrame {
             let in_prog = game_in_progress.clone();
             let settings = settings.clone();
             let db = db.clone();
+            let panel_for_timer = panel;
 
             move |_| {
                 let interval = 16;
 
                 // --- GAME DROP TIMER ---
                 if *screen.lock().unwrap() != AppScreen::InGame {
+                    panel_for_timer.refresh(true, None);
                     return;
                 }
                 let mut gs = game_state.lock().unwrap();
@@ -2715,6 +2858,7 @@ impl AppFrame {
                 }
 
                 audio_engine.update_danger_state(gs.max_column_height());
+                panel_for_timer.refresh(true, None);
             }
         });
 
@@ -2727,6 +2871,74 @@ impl AppFrame {
                 }
                 _ => 0,
             };
+
+            let now = Instant::now();
+            if key_code == SCREEN_READER_TOGGLE_KEY {
+                let mut pending = screen_reader_toggle_pending.borrow_mut();
+                let confirm_window = Duration::from_secs(SCREEN_READER_TOGGLE_CONFIRM_SECS);
+                let confirmed = pending
+                    .map(|started| now.duration_since(started) <= confirm_window)
+                    .unwrap_or(false);
+
+                if confirmed {
+                    *pending = None;
+                    let mut s = settings.lock().unwrap();
+                    let new_enabled = !s.screen_reader_enabled;
+                    s.screen_reader_enabled = new_enabled;
+                    s.save();
+
+                    if new_enabled {
+                        tolk_instance.set_enabled(true);
+                        tolk_instance.speak_forced(t!("settings.screen_reader_enabled"), true);
+                    } else {
+                        tolk_instance.speak_forced(t!("settings.screen_reader_disabled"), true);
+                        tolk_instance.set_enabled(false);
+                    }
+                } else {
+                    *pending = Some(now);
+                    let enabled = settings
+                        .lock()
+                        .map(|s| s.screen_reader_enabled)
+                        .unwrap_or(true);
+                    if enabled {
+                        tolk_instance.speak_forced(
+                            t!(
+                                "settings.screen_reader_disable_prompt",
+                                seconds = SCREEN_READER_TOGGLE_CONFIRM_SECS.to_string()
+                            ),
+                            true,
+                        );
+                    } else {
+                        tolk_instance.speak_forced(
+                            t!(
+                                "settings.screen_reader_enable_prompt",
+                                seconds = SCREEN_READER_TOGGLE_CONFIRM_SECS.to_string()
+                            ),
+                            true,
+                        );
+                    }
+                }
+                return;
+            }
+
+            if let Some(started) = *screen_reader_toggle_pending.borrow() {
+                let confirm_window = Duration::from_secs(SCREEN_READER_TOGGLE_CONFIRM_SECS);
+                *screen_reader_toggle_pending.borrow_mut() = None;
+                if now.duration_since(started) <= confirm_window {
+                    let enabled = settings
+                        .lock()
+                        .map(|s| s.screen_reader_enabled)
+                        .unwrap_or(true);
+                    if enabled {
+                        tolk_instance
+                            .speak_forced(t!("settings.screen_reader_still_enabled"), true);
+                    } else {
+                        tolk_instance
+                            .speak_forced(t!("settings.screen_reader_still_disabled"), true);
+                    }
+                }
+            }
+
             let current_screen_val = screen_state.lock().unwrap().clone();
             let action = match key_code {
                 315 | 87 | 119 => {

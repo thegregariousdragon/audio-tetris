@@ -37,32 +37,6 @@ pub enum ThemePreference {
     Light,
 }
 
-impl ThemePreference {
-    pub fn next(&self) -> Self {
-        match self {
-            ThemePreference::System => ThemePreference::Dark,
-            ThemePreference::Dark => ThemePreference::Light,
-            ThemePreference::Light => ThemePreference::System,
-        }
-    }
-
-    pub fn prev(&self) -> Self {
-        match self {
-            ThemePreference::System => ThemePreference::Light,
-            ThemePreference::Dark => ThemePreference::System,
-            ThemePreference::Light => ThemePreference::Dark,
-        }
-    }
-
-    pub fn localized_str(&self) -> String {
-        match self {
-            ThemePreference::System => rust_i18n::t!("settings.theme_system").to_string(),
-            ThemePreference::Dark => rust_i18n::t!("settings.theme_dark").to_string(),
-            ThemePreference::Light => rust_i18n::t!("settings.theme_light").to_string(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum WindowSizeMode {
     #[default]
@@ -157,6 +131,7 @@ pub struct Settings {
     pub piece_callouts_technical: bool,
     pub scoring_details_advanced: bool,
     pub zone_alerts: bool,
+    pub screen_reader_enabled: bool,
 
     pub bgm_enabled: bool,
     pub saved_bgm_volume: f32, // The volume to restore when toggled back on
@@ -183,6 +158,7 @@ impl Default for Settings {
             piece_callouts_technical: false,
             scoring_details_advanced: true,
             zone_alerts: true,
+            screen_reader_enabled: true,
 
             bgm_enabled: true,
             saved_bgm_volume: 0.2,
@@ -196,22 +172,8 @@ impl Default for Settings {
 }
 
 impl Settings {
-    pub fn is_dark_mode(&self) -> bool {
-        match self.theme {
-            ThemePreference::Dark => true,
-            ThemePreference::Light => false,
-            ThemePreference::System => wxdragon::appearance::is_system_dark_mode(),
-        }
-    }
-
     pub fn get_theme_colors(&self) -> ((u8, u8, u8), (u8, u8, u8)) {
-        if self.is_dark_mode() {
-            // Dark Slate background, Crisp White text
-            ((18, 18, 24), (245, 245, 245))
-        } else {
-            // Soft Light Slate background, Deep Charcoal text
-            ((248, 250, 252), (15, 23, 42))
-        }
+        ((18, 18, 24), (245, 245, 245))
     }
 
     pub fn load() -> Self {
@@ -235,18 +197,6 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_theme_cycling() {
-        let theme = ThemePreference::System;
-        assert_eq!(theme.next(), ThemePreference::Dark);
-        assert_eq!(theme.next().next(), ThemePreference::Light);
-        assert_eq!(theme.next().next().next(), ThemePreference::System);
-
-        assert_eq!(theme.prev(), ThemePreference::Light);
-        assert_eq!(theme.prev().prev(), ThemePreference::Dark);
-        assert_eq!(theme.prev().prev().prev(), ThemePreference::System);
-    }
 
     #[test]
     fn test_window_size_cycling() {
@@ -277,15 +227,13 @@ mod tests {
             theme: ThemePreference::Dark,
             ..Default::default()
         };
-        assert!(s.is_dark_mode());
         let (bg, fg) = s.get_theme_colors();
         assert_eq!(bg, (18, 18, 24));
         assert_eq!(fg, (245, 245, 245));
 
         s.theme = ThemePreference::Light;
-        assert!(!s.is_dark_mode());
         let (bg_l, fg_l) = s.get_theme_colors();
-        assert_eq!(bg_l, (248, 250, 252));
-        assert_eq!(fg_l, (15, 23, 42));
+        assert_eq!(bg_l, (18, 18, 24));
+        assert_eq!(fg_l, (245, 245, 245));
     }
 }

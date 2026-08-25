@@ -13,6 +13,12 @@ use std::time::Duration;
 use crate::logic::{ItemType, TetrominoType};
 use crate::settings::Settings;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BgmMode {
+    Menu,
+    Gameplay,
+}
+
 // ---------------------------------------------------------------------------
 // Stereo-panned sine wave via SamplesBuffer (guaranteed channel delivery)
 // ---------------------------------------------------------------------------
@@ -49,8 +55,10 @@ pub struct AudioEngine {
     stream_handle: OutputStreamHandle,
     bgm_sink: Arc<Mutex<Sink>>,
     bgm_tracks: Arc<Vec<(PathBuf, String)>>,
+    menu_track: Arc<Option<(PathBuf, String)>>,
     current_track: Arc<Mutex<usize>>,
     bgm_enabled: Arc<Mutex<bool>>,
+    bgm_mode: Arc<Mutex<BgmMode>>,
     sfx_volume: Arc<Mutex<f32>>,
     bgm_volume_setting: Arc<Mutex<f32>>,
     track_change_count: Arc<AtomicU64>,
@@ -94,8 +102,15 @@ impl AudioEngine {
         }
         tracks.sort_by(|a, b| a.0.cmp(&b.0));
         let bgm_tracks = Arc::new(tracks);
+        let menu_path = PathBuf::from("assets/menu/Glith_in_the_Galactics.wav");
+        let menu_track = Arc::new(if menu_path.is_file() {
+            Some((menu_path, "Glith in the Galactics".to_string()))
+        } else {
+            None
+        });
         let current_track = Arc::new(Mutex::new(0));
         let bgm_enabled = Arc::new(Mutex::new(settings.bgm_enabled));
+        let bgm_mode = Arc::new(Mutex::new(BgmMode::Menu));
         let sfx_volume = Arc::new(Mutex::new(settings.sfx_volume));
         let bgm_volume_setting = Arc::new(Mutex::new(settings.bgm_volume));
         let track_change_count = Arc::new(AtomicU64::new(0));
@@ -105,8 +120,10 @@ impl AudioEngine {
             stream_handle,
             bgm_sink,
             bgm_tracks,
+            menu_track,
             current_track,
             bgm_enabled,
+            bgm_mode,
             sfx_volume,
             bgm_volume_setting,
             track_change_count,
@@ -136,15 +153,22 @@ impl AudioEngine {
     pub fn start_bgm_thread(&self) {
         let sink = self.bgm_sink.clone();
         let bgm_tracks = self.bgm_tracks.clone();
+        let menu_track = self.menu_track.clone();
         let track_idx = self.current_track.clone();
         let enabled = self.bgm_enabled.clone();
+        let bgm_mode = self.bgm_mode.clone();
         let bgm_vol = self.bgm_volume_setting.clone();
         let track_change_count = self.track_change_count.clone();
 
         thread::spawn(move || {
             let mut last_loaded_gen: Option<u64> = None;
             loop {
-                if bgm_tracks.is_empty() {
+                let mode = *bgm_mode.lock().unwrap();
+                if mode == BgmMode::Gameplay && bgm_tracks.is_empty() {
+                    thread::sleep(Duration::from_millis(100));
+                    continue;
+                }
+                if mode == BgmMode::Menu && menu_track.is_none() && bgm_tracks.is_empty() {
                     thread::sleep(Duration::from_millis(100));
                     continue;
                 }
@@ -158,15 +182,26 @@ impl AudioEngine {
                 };
 
                 if is_empty {
-                    let idx = {
-                        let mut idx_guard = track_idx.lock().unwrap();
-                        if should_advance {
-                            *idx_guard = (*idx_guard + 1) % bgm_tracks.len();
+                    let track = {
+                        match mode {
+                            BgmMode::Menu => menu_track
+                                .as_ref()
+                                .clone()
+                                .unwrap_or_else(|| bgm_tracks[0].clone()),
+                            BgmMode::Gameplay => {
+                                let idx = {
+                                    let mut idx_guard = track_idx.lock().unwrap();
+                                    if should_advance {
+                                        *idx_guard = (*idx_guard + 1) % bgm_tracks.len();
+                                    }
+                                    *idx_guard % bgm_tracks.len()
+                                };
+                                bgm_tracks[idx].clone()
+                            }
                         }
-                        *idx_guard % bgm_tracks.len()
                     };
 
-                    let path = &bgm_tracks[idx].0;
+                    let path = &track.0;
                     if let Ok(file) = File::open(path) {
                         let reader = BufReader::new(file);
                         if let Ok(decoder) = Decoder::new(reader) {
@@ -189,6 +224,21 @@ impl AudioEngine {
                 thread::sleep(Duration::from_millis(50));
             }
         });
+    }
+
+    pub fn set_menu_music_active(&self, menu_active: bool) {
+        let new_mode = if menu_active {
+            BgmMode::Menu
+        } else {
+            BgmMode::Gameplay
+        };
+
+        let mut mode = self.bgm_mode.lock().unwrap();
+        if *mode != new_mode {
+            *mode = new_mode;
+            self.track_change_count.fetch_add(1, Ordering::SeqCst);
+            self.bgm_sink.lock().unwrap().clear();
+        }
     }
 
     pub fn next_track(&self) -> String {

@@ -13,6 +13,7 @@ mod logic;
 mod screens;
 mod settings;
 mod updater;
+mod visuals;
 
 use gui::AppFrame;
 
