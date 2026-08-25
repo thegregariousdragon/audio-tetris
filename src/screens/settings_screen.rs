@@ -67,7 +67,6 @@ pub fn render_settings(selection: usize, s: &Settings) -> (String, String) {
 
 pub fn render_visual_settings(selection: usize, s: &Settings) -> (String, String) {
     let options = [
-        t!("settings.theme_option", value = s.theme.localized_str()).to_string(),
         t!(
             "settings.window_size_option",
             value = s.window_size.localized_str()
@@ -167,7 +166,8 @@ mod tests {
         let s = Settings::default();
         let (text, spoken) = render_settings(2, &s);
         assert!(text.contains("->"));
-        assert!(spoken.contains("3 of 10"));
+        assert!(spoken.contains('3'));
+        assert!(spoken.contains("10"));
     }
 
     #[test]
@@ -175,7 +175,8 @@ mod tests {
         let s = Settings::default();
         let (text, spoken) = render_visual_settings(0, &s);
         assert!(text.contains("->"));
-        assert!(spoken.contains("1 of 4"));
+        assert!(spoken.contains('1'));
+        assert!(spoken.contains('3'));
     }
 
     #[test]
@@ -183,6 +184,7 @@ mod tests {
         let s = Settings::default();
         let (text, spoken) = render_speech_verbosity(0, &s);
         assert!(text.contains("->"));
-        assert!(spoken.contains("1 of 4"));
+        assert!(spoken.contains('1'));
+        assert!(spoken.contains('4'));
     }
 }

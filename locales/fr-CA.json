@@ -10,7 +10,8 @@
     "confirm": "Appuyez sur Entrée pour confirmer",
     "cancel": "Appuyez sur Échap pour annuler",
     "item_counter": "%{item} %{current} sur %{total}",
-    "day_utc_timestamp": "Jour %{days} %{hours}:%{mins} UTC"
+    "day_utc_timestamp": "Jour %{days} %{hours}:%{mins} UTC",
+    "none": "Aucun"
   },
   "main_menu": {
     "title": "Menu principal",
@@ -84,7 +85,15 @@
     "auto_update_spoken": "Notifications de mise à jour automatique %{status}",
     "piece_callouts_spoken": "Annonce des pièces : %{status}",
     "scoring_details_spoken": "Détails du pointage : %{status}",
-    "zone_alerts_spoken": "Alertes de zone : %{status}"
+    "zone_alerts_spoken": "Alertes de zone : %{status}",
+    "screen_reader_mode": "Mode lecteur d'écran : %{status}",
+    "screen_reader_mode_spoken": "Mode lecteur d'écran %{status}",
+    "screen_reader_disable_prompt": "Le mode lecteur d'écran est actuellement activé. Appuyez de nouveau sur F12 dans les %{seconds} secondes pour le désactiver.",
+    "screen_reader_enable_prompt": "Le mode lecteur d'écran est actuellement désactivé. Appuyez de nouveau sur F12 dans les %{seconds} secondes pour l'activer.",
+    "screen_reader_enabled": "Mode lecteur d'écran activé.",
+    "screen_reader_disabled": "Mode lecteur d'écran désactivé.",
+    "screen_reader_still_enabled": "Le mode lecteur d'écran reste activé.",
+    "screen_reader_still_disabled": "Le mode lecteur d'écran reste désactivé."
   },
   "in_game": {
     "game_started": "Nouvelle partie commencée !",
@@ -125,7 +134,13 @@
     "used_item": "%{item} utilisé",
     "no_item_to_use": "Aucun objet à utiliser",
     "bgm_playing": "Lecture de %{track}",
-    "bgm_status": "Musique de fond %{status}"
+    "bgm_status": "Musique de fond %{status}",
+    "zone_active_ms": "Zone active : %{ms} ms",
+    "zone_inactive": "Zone inactive",
+    "ascii_stats": "Niveau %{level}   Pointage %{score}   Lignes %{lines}   Zone %{zone}%",
+    "ascii_slots": "Réserve : %{hold}   Actuelle : %{current}   Objet : %{item}",
+    "board_legend": "Légende : [] active | ## verrouillée | .. fantôme | $$ objet |    vide",
+    "pause_hint": "Appuyez sur Échap pour mettre le jeu en pause."
   },
   "pieces": {
     "technical_i": "Barre",
@@ -146,7 +161,10 @@
   "items": {
     "magnet": "L'Aimant",
     "nuke": "La Bombe Nucléaire",
-    "laser": "Le Laser"
+    "laser": "Le Laser",
+    "magnet_short": "Aimant",
+    "nuke_short": "Bombe Nucléaire",
+    "laser_short": "Laser"
   },
   "key_describer": {
     "help_title": "Mode d'aide clavier\nAppuyez sur n'importe quelle touche pour entendre sa fonction.\nAppuyez deux fois sur Échap pour quitter.",
@@ -307,5 +325,18 @@
     "spoken_update_available_status": "Mise à jour disponible : Version %{version}",
     "spoken_downloading": "Téléchargement de la mise à jour...",
     "spoken_update_failed": "Échec de la mise à jour : %{err}"
+  },
+  "visuals": {
+    "paused": "EN PAUSE",
+    "status_header": "STATUT",
+    "piece_header": "PIÈCE",
+    "level": "Niveau %{level}",
+    "score": "Pointage %{score}",
+    "lines": "Lignes %{lines}",
+    "zone": "Zone %{zone}%",
+    "current": "Actuelle %{piece}",
+    "hold": "Réserve %{piece}",
+    "item": "Objet %{item}",
+    "screen_reader_hint": "F12 lecteur d'écran"
   }
 }

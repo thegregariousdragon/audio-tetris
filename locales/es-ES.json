@@ -10,7 +10,8 @@
     "confirm": "Pulsa Intro para confirmar",
     "cancel": "Pulsa Escape para cancelar",
     "item_counter": "%{item} %{current} de %{total}",
-    "day_utc_timestamp": "Día %{days} %{hours}:%{mins} UTC"
+    "day_utc_timestamp": "Día %{days} %{hours}:%{mins} UTC",
+    "none": "Ninguno"
   },
   "main_menu": {
     "title": "Menú principal",
@@ -84,7 +85,15 @@
     "auto_update_spoken": "Notificaciones de actualización automática %{status}",
     "piece_callouts_spoken": "Anuncio de piezas: %{status}",
     "scoring_details_spoken": "Detalles de puntuación: %{status}",
-    "zone_alerts_spoken": "Alertas de zona: %{status}"
+    "zone_alerts_spoken": "Alertas de zona: %{status}",
+    "screen_reader_mode": "Modo de lector de pantalla: %{status}",
+    "screen_reader_mode_spoken": "Modo de lector de pantalla %{status}",
+    "screen_reader_disable_prompt": "El modo de lector de pantalla está activado. Pulsa F12 de nuevo en %{seconds} segundos para desactivarlo.",
+    "screen_reader_enable_prompt": "El modo de lector de pantalla está desactivado. Pulsa F12 de nuevo en %{seconds} segundos para activarlo.",
+    "screen_reader_enabled": "Modo de lector de pantalla activado.",
+    "screen_reader_disabled": "Modo de lector de pantalla desactivado.",
+    "screen_reader_still_enabled": "El modo de lector de pantalla sigue activado.",
+    "screen_reader_still_disabled": "El modo de lector de pantalla sigue desactivado."
   },
   "in_game": {
     "game_started": "¡Nueva partida iniciada!",
@@ -125,7 +134,13 @@
     "used_item": "Usado %{item}",
     "no_item_to_use": "No hay ningún objeto para usar",
     "bgm_playing": "Reproduciendo %{track}",
-    "bgm_status": "Música de fondo %{status}"
+    "bgm_status": "Música de fondo %{status}",
+    "zone_active_ms": "Zona activa: %{ms} ms",
+    "zone_inactive": "Zona inactiva",
+    "ascii_stats": "Nivel %{level}   Puntos %{score}   Líneas %{lines}   Zona %{zone}%",
+    "ascii_slots": "Reserva: %{hold}   Actual: %{current}   Objeto: %{item}",
+    "board_legend": "Leyenda: [] activa | ## bloqueada | .. sombra | $$ objeto |    vacía",
+    "pause_hint": "Pulsa Escape para pausar el juego."
   },
   "pieces": {
     "technical_i": "Barra",
@@ -146,7 +161,10 @@
   "items": {
     "magnet": "El Imán",
     "nuke": "La Bomba Nuclear",
-    "laser": "El Láser"
+    "laser": "El Láser",
+    "magnet_short": "Imán",
+    "nuke_short": "Bomba Nuclear",
+    "laser_short": "Láser"
   },
   "key_describer": {
     "help_title": "Modo de ayuda del teclado\nPulsa cualquier tecla para escuchar su función.\nPulsa Escape dos veces para salir.",
@@ -307,5 +325,18 @@
     "spoken_update_available_status": "Actualización disponible: Versión %{version}",
     "spoken_downloading": "Descargando actualización...",
     "spoken_update_failed": "Error en la actualización: %{err}"
+  },
+  "visuals": {
+    "paused": "PAUSA",
+    "status_header": "ESTADO",
+    "piece_header": "PIEZA",
+    "level": "Nivel %{level}",
+    "score": "Puntos %{score}",
+    "lines": "Líneas %{lines}",
+    "zone": "Zona %{zone}%",
+    "current": "Actual %{piece}",
+    "hold": "Reserva %{piece}",
+    "item": "Objeto %{item}",
+    "screen_reader_hint": "F12 lector de pantalla"
   }
 }

@@ -10,7 +10,8 @@
     "confirm": "Eingabetaste zum Bestätigen drücken",
     "cancel": "Escape-Taste zum Abbrechen drücken",
     "item_counter": "%{item} %{current} von %{total}",
-    "day_utc_timestamp": "Tag %{days} %{hours}:%{mins} UTC"
+    "day_utc_timestamp": "Tag %{days} %{hours}:%{mins} UTC",
+    "none": "Keine"
   },
   "main_menu": {
     "title": "Hauptmenü",
@@ -84,7 +85,15 @@
     "auto_update_spoken": "Automatische Update-Benachrichtigungen %{status}",
     "piece_callouts_spoken": "Blockansagen: %{status}",
     "scoring_details_spoken": "Punkte-Details: %{status}",
-    "zone_alerts_spoken": "Zonen-Hinweise: %{status}"
+    "zone_alerts_spoken": "Zonen-Hinweise: %{status}",
+    "screen_reader_mode": "Screenreader-Modus: %{status}",
+    "screen_reader_mode_spoken": "Screenreader-Modus %{status}",
+    "screen_reader_disable_prompt": "Der Screenreader-Modus ist derzeit aktiviert. Drücken Sie innerhalb von %{seconds} Sekunden erneut F12, um ihn zu deaktivieren.",
+    "screen_reader_enable_prompt": "Der Screenreader-Modus ist derzeit deaktiviert. Drücken Sie innerhalb von %{seconds} Sekunden erneut F12, um ihn zu aktivieren.",
+    "screen_reader_enabled": "Screenreader-Modus aktiviert.",
+    "screen_reader_disabled": "Screenreader-Modus deaktiviert.",
+    "screen_reader_still_enabled": "Screenreader-Modus bleibt aktiviert.",
+    "screen_reader_still_disabled": "Screenreader-Modus bleibt deaktiviert."
   },
   "in_game": {
     "game_started": "Neues Spiel gestartet!",
@@ -125,7 +134,13 @@
     "used_item": "%{item} eingesetzt",
     "no_item_to_use": "Kein Gegenstand vorhanden",
     "bgm_playing": "Titel %{track} wird abgespielt",
-    "bgm_status": "Hintergrundmusik %{status}"
+    "bgm_status": "Hintergrundmusik %{status}",
+    "zone_active_ms": "Zone aktiv: %{ms} ms",
+    "zone_inactive": "Zone inaktiv",
+    "ascii_stats": "Level %{level}   Punkte %{score}   Reihen %{lines}   Zone %{zone}%",
+    "ascii_slots": "Halten: %{hold}   Aktuell: %{current}   Item: %{item}",
+    "board_legend": "Legende: [] aktiv | ## gesperrt | .. Schatten | $$ Item |    leer",
+    "pause_hint": "Drücken Sie Escape, um das Spiel zu pausieren."
   },
   "pieces": {
     "technical_i": "Balken",
@@ -146,7 +161,10 @@
   "items": {
     "magnet": "Der Magnet",
     "nuke": "Die Atombombe",
-    "laser": "Der Laser"
+    "laser": "Der Laser",
+    "magnet_short": "Magnet",
+    "nuke_short": "Nuke",
+    "laser_short": "Laser"
   },
   "key_describer": {
     "help_title": "Tastaturhilfe-Modus\nDrücke eine beliebige Taste, um ihre Funktion zu hören.\nDrücke zweimal Escape zum Beenden.",
@@ -307,5 +325,18 @@
     "spoken_update_available_status": "Update verfügbar: Version %{version}",
     "spoken_downloading": "Update wird heruntergeladen...",
     "spoken_update_failed": "Update fehlgeschlagen: %{err}"
+  },
+  "visuals": {
+    "paused": "PAUSIERT",
+    "status_header": "STATUS",
+    "piece_header": "BLOCK",
+    "level": "Level %{level}",
+    "score": "Punkte %{score}",
+    "lines": "Reihen %{lines}",
+    "zone": "Zone %{zone}%",
+    "current": "Aktuell %{piece}",
+    "hold": "Halten %{piece}",
+    "item": "Item %{item}",
+    "screen_reader_hint": "F12 Screenreader"
   }
 }

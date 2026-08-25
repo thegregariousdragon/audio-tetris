@@ -1,5 +1,14 @@
 use rust_i18n::t;
 
+const MENU_WIDTH: usize = 44;
+
+fn center_line(line: &str) -> String {
+    if line.len() >= MENU_WIDTH {
+        return line.to_string();
+    }
+    format!("{}{}", " ".repeat((MENU_WIDTH - line.len()) / 2), line)
+}
+
 pub fn get_main_menu_options(in_prog: bool) -> Vec<String> {
     if in_prog {
         vec![
@@ -33,12 +42,20 @@ pub fn get_main_menu_options(in_prog: bool) -> Vec<String> {
 pub fn render_main_menu(selection: usize, in_prog: bool) -> (String, String) {
     let options = get_main_menu_options(in_prog);
     let sel = selection.min(options.len().saturating_sub(1));
-    let mut text = format!("{}\n\n", t!("main_menu.title"));
+    let mut text = String::new();
+    text.push_str(&center_line("############################################"));
+    text.push('\n');
+    text.push_str(&center_line(&format!("# {} #", t!("main_menu.title"))));
+    text.push('\n');
+    text.push_str(&center_line("############################################"));
+    text.push_str("\n\n");
     for (i, opt) in options.iter().enumerate() {
         if i == sel {
-            text.push_str(&format!("->   {}\n", opt));
+            text.push_str(&center_line(&format!("-> [ {} ]", opt)));
+            text.push('\n');
         } else {
-            text.push_str(&format!("   {}\n", opt));
+            text.push_str(&center_line(&format!("   {}", opt)));
+            text.push('\n');
         }
     }
     let spoken = t!(

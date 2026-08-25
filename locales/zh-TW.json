@@ -10,7 +10,8 @@
     "confirm": "按 Enter 鍵確認",
     "cancel": "按 Escape 鍵取消",
     "item_counter": "%{item} 第 %{current} 項，共 %{total} 項",
-    "day_utc_timestamp": "第 %{days} 天 %{hours}:%{mins} UTC"
+    "day_utc_timestamp": "第 %{days} 天 %{hours}:%{mins} UTC",
+    "none": "無"
   },
   "main_menu": {
     "title": "主選單",
@@ -84,7 +85,15 @@
     "auto_update_spoken": "自動更新通知 %{status}",
     "piece_callouts_spoken": "方塊提示：%{status}",
     "scoring_details_spoken": "得分詳情：%{status}",
-    "zone_alerts_spoken": "領域提醒：%{status}"
+    "zone_alerts_spoken": "領域提醒：%{status}",
+    "screen_reader_mode": "螢幕報讀模式：%{status}",
+    "screen_reader_mode_spoken": "螢幕報讀模式 %{status}",
+    "screen_reader_disable_prompt": "螢幕報讀模式目前已開啟。請在 %{seconds} 秒內再次按下 F12 將其關閉。",
+    "screen_reader_enable_prompt": "螢幕報讀模式目前已關閉。請在 %{seconds} 秒內再次按下 F12 將其開啟。",
+    "screen_reader_enabled": "螢幕報讀模式已開啟。",
+    "screen_reader_disabled": "螢幕報讀模式已關閉。",
+    "screen_reader_still_enabled": "螢幕報讀模式保持開啟。",
+    "screen_reader_still_disabled": "螢幕報讀模式保持關閉。"
   },
   "in_game": {
     "game_started": "新遊戲已開始！",
@@ -125,7 +134,13 @@
     "used_item": "使用了 %{item}",
     "no_item_to_use": "沒有可用的道具",
     "bgm_playing": "正在播放 %{track}",
-    "bgm_status": "背景音樂 %{status}"
+    "bgm_status": "背景音樂 %{status}",
+    "zone_active_ms": "領域啟動: %{ms} 毫秒",
+    "zone_inactive": "領域未啟動",
+    "ascii_stats": "等級 %{level}   得分 %{score}   消行 %{lines}   能量 %{zone}%",
+    "ascii_slots": "暫存: %{hold}   當前: %{current}   道具: %{item}",
+    "board_legend": "圖例: [] 當前方塊 | ## 固定方塊 | .. 幽靈方塊 | $$ 道具 |    空白",
+    "pause_hint": "按 Escape 暫停遊戲。"
   },
   "pieces": {
     "technical_i": "長條",
@@ -146,7 +161,10 @@
   "items": {
     "magnet": "磁鐵",
     "nuke": "核彈",
-    "laser": "鐳射"
+    "laser": "鐳射",
+    "magnet_short": "磁鐵",
+    "nuke_short": "核彈",
+    "laser_short": "雷射"
   },
   "key_describer": {
     "help_title": "鍵盤說明模式\n按任意鍵收聽其功能。\n按兩次 Escape 結束。",
@@ -307,5 +325,18 @@
     "spoken_update_available_status": "發現新版本：版本 %{version}",
     "spoken_downloading": "正在下載更新...",
     "spoken_update_failed": "更新失敗：%{err}"
+  },
+  "visuals": {
+    "paused": "暫停",
+    "status_header": "狀態",
+    "piece_header": "方塊",
+    "level": "等級 %{level}",
+    "score": "得分 %{score}",
+    "lines": "消行 %{lines}",
+    "zone": "能量 %{zone}%",
+    "current": "當前 %{piece}",
+    "hold": "暫存 %{piece}",
+    "item": "道具 %{item}",
+    "screen_reader_hint": "F12 螢幕報讀"
   }
 }
