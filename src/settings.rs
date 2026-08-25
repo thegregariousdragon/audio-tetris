@@ -29,6 +29,118 @@ impl Difficulty {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum ThemePreference {
+    #[default]
+    System,
+    Dark,
+    Light,
+}
+
+impl ThemePreference {
+    pub fn next(&self) -> Self {
+        match self {
+            ThemePreference::System => ThemePreference::Dark,
+            ThemePreference::Dark => ThemePreference::Light,
+            ThemePreference::Light => ThemePreference::System,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            ThemePreference::System => ThemePreference::Light,
+            ThemePreference::Dark => ThemePreference::System,
+            ThemePreference::Light => ThemePreference::Dark,
+        }
+    }
+
+    pub fn localized_str(&self) -> String {
+        match self {
+            ThemePreference::System => rust_i18n::t!("settings.theme_system").to_string(),
+            ThemePreference::Dark => rust_i18n::t!("settings.theme_dark").to_string(),
+            ThemePreference::Light => rust_i18n::t!("settings.theme_light").to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum WindowSizeMode {
+    #[default]
+    Standard,
+    Large,
+    Maximized,
+}
+
+impl WindowSizeMode {
+    pub fn next(&self) -> Self {
+        match self {
+            WindowSizeMode::Standard => WindowSizeMode::Large,
+            WindowSizeMode::Large => WindowSizeMode::Maximized,
+            WindowSizeMode::Maximized => WindowSizeMode::Standard,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            WindowSizeMode::Standard => WindowSizeMode::Maximized,
+            WindowSizeMode::Large => WindowSizeMode::Standard,
+            WindowSizeMode::Maximized => WindowSizeMode::Large,
+        }
+    }
+
+    pub fn localized_str(&self) -> String {
+        match self {
+            WindowSizeMode::Standard => rust_i18n::t!("settings.window_size_standard").to_string(),
+            WindowSizeMode::Large => rust_i18n::t!("settings.window_size_large").to_string(),
+            WindowSizeMode::Maximized => {
+                rust_i18n::t!("settings.window_size_maximized").to_string()
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum FontScale {
+    #[default]
+    Standard,
+    Large,
+    ExtraLarge,
+}
+
+impl FontScale {
+    pub fn next(&self) -> Self {
+        match self {
+            FontScale::Standard => FontScale::Large,
+            FontScale::Large => FontScale::ExtraLarge,
+            FontScale::ExtraLarge => FontScale::Standard,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            FontScale::Standard => FontScale::ExtraLarge,
+            FontScale::Large => FontScale::Standard,
+            FontScale::ExtraLarge => FontScale::Large,
+        }
+    }
+
+    pub fn point_size(&self) -> i32 {
+        match self {
+            FontScale::Standard => 14,
+            FontScale::Large => 18,
+            FontScale::ExtraLarge => 22,
+        }
+    }
+
+    pub fn localized_str(&self) -> String {
+        match self {
+            FontScale::Standard => rust_i18n::t!("settings.font_scale_standard").to_string(),
+            FontScale::Large => rust_i18n::t!("settings.font_scale_large").to_string(),
+            FontScale::ExtraLarge => rust_i18n::t!("settings.font_scale_extralarge").to_string(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default)]
 pub struct Settings {
@@ -37,6 +149,10 @@ pub struct Settings {
     pub bgm_volume: f32,   // 0.0 to 1.0
     pub voice_volume: f32, // 0.0 to 1.0 — informational; actual voice volume controlled by screen reader
     pub difficulty: Difficulty,
+
+    pub theme: ThemePreference,
+    pub window_size: WindowSizeMode,
+    pub font_scale: FontScale,
 
     pub piece_callouts_technical: bool,
     pub scoring_details_advanced: bool,
@@ -60,6 +176,10 @@ impl Default for Settings {
             voice_volume: 1.0,
             difficulty: Difficulty::Moderate,
 
+            theme: ThemePreference::System,
+            window_size: WindowSizeMode::Standard,
+            font_scale: FontScale::Standard,
+
             piece_callouts_technical: false,
             scoring_details_advanced: true,
             zone_alerts: true,
@@ -76,6 +196,24 @@ impl Default for Settings {
 }
 
 impl Settings {
+    pub fn is_dark_mode(&self) -> bool {
+        match self.theme {
+            ThemePreference::Dark => true,
+            ThemePreference::Light => false,
+            ThemePreference::System => wxdragon::appearance::is_system_dark_mode(),
+        }
+    }
+
+    pub fn get_theme_colors(&self) -> ((u8, u8, u8), (u8, u8, u8)) {
+        if self.is_dark_mode() {
+            // Dark Slate background, Crisp White text
+            ((18, 18, 24), (245, 245, 245))
+        } else {
+            // Soft Light Slate background, Deep Charcoal text
+            ((248, 250, 252), (15, 23, 42))
+        }
+    }
+
     pub fn load() -> Self {
         let path = Path::new("settings.json");
         if path.exists()
@@ -91,5 +229,63 @@ impl Settings {
         if let Ok(json) = serde_json::to_string_pretty(self) {
             let _ = fs::write("settings.json", json);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_theme_cycling() {
+        let theme = ThemePreference::System;
+        assert_eq!(theme.next(), ThemePreference::Dark);
+        assert_eq!(theme.next().next(), ThemePreference::Light);
+        assert_eq!(theme.next().next().next(), ThemePreference::System);
+
+        assert_eq!(theme.prev(), ThemePreference::Light);
+        assert_eq!(theme.prev().prev(), ThemePreference::Dark);
+        assert_eq!(theme.prev().prev().prev(), ThemePreference::System);
+    }
+
+    #[test]
+    fn test_window_size_cycling() {
+        let size = WindowSizeMode::Standard;
+        assert_eq!(size.next(), WindowSizeMode::Large);
+        assert_eq!(size.next().next(), WindowSizeMode::Maximized);
+        assert_eq!(size.next().next().next(), WindowSizeMode::Standard);
+
+        assert_eq!(size.prev(), WindowSizeMode::Maximized);
+    }
+
+    #[test]
+    fn test_font_scale_cycling_and_points() {
+        let font = FontScale::Standard;
+        assert_eq!(font.point_size(), 14);
+        assert_eq!(font.next(), FontScale::Large);
+        assert_eq!(font.next().point_size(), 18);
+        assert_eq!(font.next().next(), FontScale::ExtraLarge);
+        assert_eq!(font.next().next().point_size(), 22);
+        assert_eq!(font.next().next().next(), FontScale::Standard);
+
+        assert_eq!(font.prev(), FontScale::ExtraLarge);
+    }
+
+    #[test]
+    fn test_theme_colors() {
+        let mut s = Settings {
+            theme: ThemePreference::Dark,
+            ..Default::default()
+        };
+        assert!(s.is_dark_mode());
+        let (bg, fg) = s.get_theme_colors();
+        assert_eq!(bg, (18, 18, 24));
+        assert_eq!(fg, (245, 245, 245));
+
+        s.theme = ThemePreference::Light;
+        assert!(!s.is_dark_mode());
+        let (bg_l, fg_l) = s.get_theme_colors();
+        assert_eq!(bg_l, (248, 250, 252));
+        assert_eq!(fg_l, (15, 23, 42));
     }
 }

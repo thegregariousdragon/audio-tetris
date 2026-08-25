@@ -8,6 +8,7 @@ pub fn render_settings(selection: usize, s: &Settings) -> (String, String) {
     let options = [
         t!("settings.language", name = s.language.display_name()).to_string(),
         t!("settings.difficulty", value = s.difficulty.localized_str()).to_string(),
+        t!("settings.visual_theme_menu").to_string(),
         t!("settings.speech_verbosity").to_string(),
         t!(
             "settings.voice_volume",
@@ -45,6 +46,45 @@ pub fn render_settings(selection: usize, s: &Settings) -> (String, String) {
     let mut text = format!(
         "{}\n{}\n\n",
         t!("settings.title"),
+        t!("settings.instruction")
+    );
+    for (i, opt) in options.iter().enumerate() {
+        if i == sel {
+            text.push_str(&format!("->   {}\n", opt));
+        } else {
+            text.push_str(&format!("   {}\n", opt));
+        }
+    }
+    let spoken = t!(
+        "common.item_counter",
+        item = &options[sel],
+        current = (sel + 1).to_string(),
+        total = options.len().to_string()
+    )
+    .to_string();
+    (text, spoken)
+}
+
+pub fn render_visual_settings(selection: usize, s: &Settings) -> (String, String) {
+    let options = [
+        t!("settings.theme_option", value = s.theme.localized_str()).to_string(),
+        t!(
+            "settings.window_size_option",
+            value = s.window_size.localized_str()
+        )
+        .to_string(),
+        t!(
+            "settings.font_scale_option",
+            value = s.font_scale.localized_str()
+        )
+        .to_string(),
+        t!("common.back").to_string(),
+    ];
+
+    let sel = selection.min(options.len().saturating_sub(1));
+    let mut text = format!(
+        "{}\n{}\n\n",
+        t!("settings.visual_theme_title"),
         t!("settings.instruction")
     );
     for (i, opt) in options.iter().enumerate() {
@@ -116,4 +156,33 @@ pub fn render_speech_verbosity(selection: usize, s: &Settings) -> (String, Strin
     )
     .to_string();
     (text, spoken)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_render_settings_options_count() {
+        let s = Settings::default();
+        let (text, spoken) = render_settings(2, &s);
+        assert!(text.contains("->"));
+        assert!(spoken.contains("3 of 10"));
+    }
+
+    #[test]
+    fn test_render_visual_settings() {
+        let s = Settings::default();
+        let (text, spoken) = render_visual_settings(0, &s);
+        assert!(text.contains("->"));
+        assert!(spoken.contains("1 of 4"));
+    }
+
+    #[test]
+    fn test_render_speech_verbosity() {
+        let s = Settings::default();
+        let (text, spoken) = render_speech_verbosity(0, &s);
+        assert!(text.contains("->"));
+        assert!(spoken.contains("1 of 4"));
+    }
 }

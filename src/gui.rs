@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use wxdragon::color::Colour;
+use wxdragon::font::{Font, FontFamily, FontStyle, FontWeight};
 use wxdragon::prelude::*;
 
 use crate::audio::AudioEngine;
@@ -11,7 +13,7 @@ use crate::screens::{
     leaderboard, load_screen, main_menu, pause_menu, save_screen, settings_screen, tutorial_prompt,
     tutorial_screen, update_screen,
 };
-use crate::settings::{Difficulty, Settings};
+use crate::settings::{Difficulty, Settings, WindowSizeMode};
 use crate::updater::{self, UpdateStatus};
 use rust_i18n::t;
 use tolk::Tolk;
@@ -79,6 +81,53 @@ pub struct AppFrame {
 }
 
 impl AppFrame {
+    pub fn apply_visual_settings(
+        frame: &Frame,
+        panel: &Panel,
+        text_display: &StaticText,
+        settings: &Settings,
+    ) {
+        let (bg, fg) = settings.get_theme_colors();
+        panel.set_background_color(Colour::new(bg.0, bg.1, bg.2, 255));
+        text_display.set_foreground_color(Colour::new(fg.0, fg.1, fg.2, 255));
+
+        if let Some(font) = Font::new_with_details(
+            settings.font_scale.point_size(),
+            FontFamily::Modern.as_i32(),
+            FontStyle::Normal.as_i32(),
+            FontWeight::Normal.as_i32(),
+            false,
+            "Consolas",
+        ) {
+            text_display.set_font(&font);
+        }
+
+        match settings.window_size {
+            WindowSizeMode::Standard => {
+                if frame.is_maximized() {
+                    frame.maximize(false);
+                }
+                frame.set_size(Size::new(800, 600));
+                frame.center_on_screen();
+            }
+            WindowSizeMode::Large => {
+                if frame.is_maximized() {
+                    frame.maximize(false);
+                }
+                frame.set_size(Size::new(1280, 720));
+                frame.center_on_screen();
+            }
+            WindowSizeMode::Maximized => {
+                if !frame.is_maximized() {
+                    frame.maximize(true);
+                }
+            }
+        }
+
+        panel.layout();
+        panel.refresh(true, None);
+    }
+
     pub fn new() -> Self {
         let tolk = Tolk::new();
         tolk.try_sapi(true);
@@ -97,10 +146,21 @@ impl AppFrame {
         let tutorial_state = Arc::new(Mutex::new(tutorial_screen::TutorialState::new(1)));
 
         let title = format!("Audio Tetris v{}", env!("APP_VERSION"));
+        let initial_size = match settings_data.window_size {
+            WindowSizeMode::Standard => Size::new(800, 600),
+            WindowSizeMode::Large => Size::new(1280, 720),
+            WindowSizeMode::Maximized => Size::new(800, 600),
+        };
         let frame = Frame::builder()
             .with_title(&title)
-            .with_size(Size::new(600, 400))
+            .with_size(initial_size)
             .build();
+        frame.set_min_size(Size::new(640, 480));
+        if settings_data.window_size == WindowSizeMode::Maximized {
+            frame.maximize(true);
+        } else {
+            frame.center_on_screen();
+        }
 
         let panel = Panel::builder(&frame)
             .with_style(PanelStyle::BorderNone)
@@ -110,7 +170,28 @@ impl AppFrame {
 
         let text_display = StaticText::builder(&panel).with_label("Loading...").build();
 
-        sizer.add(&text_display, 1, SizerFlag::All | SizerFlag::Expand, 20);
+        let (bg, fg) = settings_data.get_theme_colors();
+        panel.set_background_color(Colour::new(bg.0, bg.1, bg.2, 255));
+        text_display.set_foreground_color(Colour::new(fg.0, fg.1, fg.2, 255));
+        if let Some(font) = Font::new_with_details(
+            settings_data.font_scale.point_size(),
+            FontFamily::Modern.as_i32(),
+            FontStyle::Normal.as_i32(),
+            FontWeight::Normal.as_i32(),
+            false,
+            "Consolas",
+        ) {
+            text_display.set_font(&font);
+        }
+
+        sizer.add_stretch_spacer(1);
+        sizer.add(
+            &text_display,
+            0,
+            SizerFlag::AlignCenterHorizontal | SizerFlag::AlignCenterVertical,
+            0,
+        );
+        sizer.add_stretch_spacer(1);
 
         panel.set_sizer(sizer, true);
 
@@ -222,6 +303,9 @@ impl AppFrame {
                 leaderboard::render_leaderboard(selection, &scores, &stats)
             }
             AppScreen::Settings { selection } => settings_screen::render_settings(selection, &s),
+            AppScreen::VisualSettings { selection } => {
+                settings_screen::render_visual_settings(selection, &s)
+            }
             AppScreen::SpeechVerbosity { selection } => {
                 settings_screen::render_speech_verbosity(selection, &s)
             }
@@ -248,6 +332,7 @@ impl AppFrame {
         };
 
         self.text_display.set_label(&display_text);
+        self.panel.layout();
 
         if speak && !spoken_text.is_empty() {
             let interrupt = !matches!(screen, AppScreen::Update { .. });
@@ -266,6 +351,7 @@ impl AppFrame {
         let db = self.db.clone();
         let tutorial_state = self.tutorial_state.clone();
         let frame = self.frame;
+        let panel = self.panel;
 
         let render_in_closure = {
             let screen_state = screen_state.clone();
@@ -309,6 +395,9 @@ impl AppFrame {
                     AppScreen::Settings { selection } => {
                         settings_screen::render_settings(selection, &s)
                     }
+                    AppScreen::VisualSettings { selection } => {
+                        settings_screen::render_visual_settings(selection, &s)
+                    }
                     AppScreen::SpeechVerbosity { selection } => {
                         settings_screen::render_speech_verbosity(selection, &s)
                     }
@@ -337,6 +426,7 @@ impl AppFrame {
                 };
 
                 text_ctrl.set_label(&display_text);
+                panel.layout();
                 if speak && !spoken_text.is_empty() {
                     let interrupt = !matches!(screen, AppScreen::Update { .. });
                     tolk.output(&spoken_text, interrupt);
@@ -1326,14 +1416,14 @@ impl AppFrame {
                     }
                     AppScreen::Settings { selection } => match action {
                         InputAction::Up => {
-                            let new_sel = if selection > 0 { selection - 1 } else { 8 };
+                            let new_sel = if selection > 0 { selection - 1 } else { 9 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::Settings { selection: new_sel };
                             audio_engine.play_menu_move();
                             screen_changed = true;
                         }
                         InputAction::Down => {
-                            let new_sel = if selection < 8 { selection + 1 } else { 0 };
+                            let new_sel = if selection < 9 { selection + 1 } else { 0 };
                             *screen_state.lock().unwrap() =
                                 AppScreen::Settings { selection: new_sel };
                             audio_engine.play_menu_move();
@@ -1365,7 +1455,7 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 3 {
+                            } else if selection == 4 {
                                 s.voice_volume = (s.voice_volume - 0.05).max(0.0);
                                 tolk.speak(
                                     t!(
@@ -1375,11 +1465,11 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 4 {
+                            } else if selection == 5 {
                                 s.sfx_volume = (s.sfx_volume - 0.05).max(0.0);
                                 audio_engine.set_sfx_volume(s.sfx_volume);
                                 audio_engine.play_aligned_sound();
-                            } else if selection == 5 {
+                            } else if selection == 6 {
                                 s.bgm_enabled = !s.bgm_enabled;
                                 if s.bgm_enabled {
                                     s.bgm_volume = if s.saved_bgm_volume > 0.0 {
@@ -1401,7 +1491,7 @@ impl AppFrame {
                                     t!("settings.bgm_status_spoken", status = status).to_string(),
                                     true,
                                 );
-                            } else if selection == 6 {
+                            } else if selection == 7 {
                                 s.bgm_volume = (s.bgm_volume - 0.05).max(0.0);
                                 audio_engine.set_bgm_volume(s.bgm_volume);
                                 if !s.bgm_enabled && s.bgm_volume > 0.0 {
@@ -1416,7 +1506,7 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 7 {
+                            } else if selection == 8 {
                                 s.check_for_updates = !s.check_for_updates;
                                 let on_str = t!("common.on");
                                 let off_str = t!("common.off");
@@ -1460,7 +1550,7 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 3 {
+                            } else if selection == 4 {
                                 s.voice_volume = (s.voice_volume + 0.05).min(1.0);
                                 tolk.speak(
                                     t!(
@@ -1470,11 +1560,11 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 4 {
+                            } else if selection == 5 {
                                 s.sfx_volume = (s.sfx_volume + 0.05).min(1.0);
                                 audio_engine.set_sfx_volume(s.sfx_volume);
                                 audio_engine.play_aligned_sound();
-                            } else if selection == 5 {
+                            } else if selection == 6 {
                                 s.bgm_enabled = !s.bgm_enabled;
                                 if s.bgm_enabled {
                                     s.bgm_volume = if s.saved_bgm_volume > 0.0 {
@@ -1496,7 +1586,7 @@ impl AppFrame {
                                     t!("settings.bgm_status_spoken", status = status).to_string(),
                                     true,
                                 );
-                            } else if selection == 6 {
+                            } else if selection == 7 {
                                 s.bgm_volume = (s.bgm_volume + 0.05).min(1.0);
                                 audio_engine.set_bgm_volume(s.bgm_volume);
                                 if !s.bgm_enabled && s.bgm_volume > 0.0 {
@@ -1511,7 +1601,7 @@ impl AppFrame {
                                     .to_string(),
                                     true,
                                 );
-                            } else if selection == 7 {
+                            } else if selection == 8 {
                                 s.check_for_updates = !s.check_for_updates;
                                 let on_str = t!("common.on");
                                 let off_str = t!("common.off");
@@ -1533,9 +1623,14 @@ impl AppFrame {
                             if selection == 2 && action == InputAction::Select {
                                 audio_engine.play_menu_select();
                                 *screen_state.lock().unwrap() =
+                                    AppScreen::VisualSettings { selection: 0 };
+                                screen_changed = true;
+                            } else if selection == 3 && action == InputAction::Select {
+                                audio_engine.play_menu_select();
+                                *screen_state.lock().unwrap() =
                                     AppScreen::SpeechVerbosity { selection: 0 };
                                 screen_changed = true;
-                            } else if selection == 8 || action == InputAction::Back {
+                            } else if selection == 9 || action == InputAction::Back {
                                 audio_engine.play_menu_select();
                                 let in_prog = *game_in_progress.lock().unwrap();
                                 if in_prog {
@@ -1547,6 +1642,110 @@ impl AppFrame {
                                 }
                                 screen_changed = true;
                             }
+                        }
+                        _ => {}
+                    },
+                    AppScreen::VisualSettings { selection } => match action {
+                        InputAction::Up => {
+                            let new_sel = if selection > 0 { selection - 1 } else { 3 };
+                            *screen_state.lock().unwrap() =
+                                AppScreen::VisualSettings { selection: new_sel };
+                            audio_engine.play_menu_move();
+                            screen_changed = true;
+                        }
+                        InputAction::Down => {
+                            let new_sel = if selection < 3 { selection + 1 } else { 0 };
+                            *screen_state.lock().unwrap() =
+                                AppScreen::VisualSettings { selection: new_sel };
+                            audio_engine.play_menu_move();
+                            screen_changed = true;
+                        }
+                        InputAction::Left => {
+                            let mut s = settings.lock().unwrap();
+                            if selection == 0 {
+                                s.theme = s.theme.prev();
+                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!("settings.theme_spoken", value = s.theme.localized_str())
+                                        .to_string(),
+                                    true,
+                                );
+                            } else if selection == 1 {
+                                s.window_size = s.window_size.prev();
+                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!(
+                                        "settings.window_size_spoken",
+                                        value = s.window_size.localized_str()
+                                    )
+                                    .to_string(),
+                                    true,
+                                );
+                            } else if selection == 2 {
+                                s.font_scale = s.font_scale.prev();
+                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!(
+                                        "settings.font_scale_spoken",
+                                        value = s.font_scale.localized_str()
+                                    )
+                                    .to_string(),
+                                    true,
+                                );
+                            }
+                            s.save();
+                            screen_changed = true;
+                        }
+                        InputAction::Right | InputAction::Select => {
+                            let mut s = settings.lock().unwrap();
+                            if selection == 0 {
+                                s.theme = s.theme.next();
+                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!("settings.theme_spoken", value = s.theme.localized_str())
+                                        .to_string(),
+                                    true,
+                                );
+                            } else if selection == 1 {
+                                s.window_size = s.window_size.next();
+                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!(
+                                        "settings.window_size_spoken",
+                                        value = s.window_size.localized_str()
+                                    )
+                                    .to_string(),
+                                    true,
+                                );
+                            } else if selection == 2 {
+                                s.font_scale = s.font_scale.next();
+                                Self::apply_visual_settings(&frame, &panel, &text_ctrl, &s);
+                                audio_engine.play_menu_move();
+                                tolk.speak(
+                                    t!(
+                                        "settings.font_scale_spoken",
+                                        value = s.font_scale.localized_str()
+                                    )
+                                    .to_string(),
+                                    true,
+                                );
+                            } else if selection == 3 && action == InputAction::Select {
+                                audio_engine.play_menu_select();
+                                *screen_state.lock().unwrap() =
+                                    AppScreen::Settings { selection: 2 };
+                            }
+                            s.save();
+                            screen_changed = true;
+                        }
+                        InputAction::Back => {
+                            audio_engine.play_menu_select();
+                            *screen_state.lock().unwrap() = AppScreen::Settings { selection: 2 };
+                            screen_changed = true;
                         }
                         _ => {}
                     },
@@ -1607,14 +1806,14 @@ impl AppFrame {
                             } else if selection == 3 && action == InputAction::Select {
                                 audio_engine.play_menu_select();
                                 *screen_state.lock().unwrap() =
-                                    AppScreen::Settings { selection: 2 };
+                                    AppScreen::Settings { selection: 3 };
                             }
                             s.save();
                             screen_changed = true;
                         }
                         InputAction::Back => {
                             audio_engine.play_menu_select();
-                            *screen_state.lock().unwrap() = AppScreen::Settings { selection: 2 };
+                            *screen_state.lock().unwrap() = AppScreen::Settings { selection: 3 };
                             screen_changed = true;
                         }
                         _ => {}
