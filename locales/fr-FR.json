@@ -85,14 +85,14 @@
     "piece_callouts_spoken": "Annonce des pièces : %{status}",
     "scoring_details_spoken": "Détails du score : %{status}",
     "zone_alerts_spoken": "Alertes de zone : %{status}",
-    "screen_reader_mode": "Screen Reader Mode: %{status}",
-    "screen_reader_mode_spoken": "Screen Reader Mode %{status}",
-    "screen_reader_disable_prompt": "Screen reader mode is currently on. Press F12 again within %{seconds} seconds to turn it off.",
-    "screen_reader_enable_prompt": "Screen reader mode is currently off. Press F12 again within %{seconds} seconds to turn it on.",
-    "screen_reader_enabled": "Screen reader mode on.",
-    "screen_reader_disabled": "Screen reader mode off.",
-    "screen_reader_still_enabled": "Screen reader mode remains on.",
-    "screen_reader_still_disabled": "Screen reader mode remains off."
+    "screen_reader_mode": "Mode lecteur d'écran : %{status}",
+    "screen_reader_mode_spoken": "Mode lecteur d'écran %{status}",
+    "screen_reader_disable_prompt": "Le mode lecteur d'écran est actuellement activé. Appuyez de nouveau sur F12 dans les %{seconds} secondes pour le désactiver.",
+    "screen_reader_enable_prompt": "Le mode lecteur d'écran est actuellement désactivé. Appuyez de nouveau sur F12 dans les %{seconds} secondes pour l'activer.",
+    "screen_reader_enabled": "Mode lecteur d'écran activé.",
+    "screen_reader_disabled": "Mode lecteur d'écran désactivé.",
+    "screen_reader_still_enabled": "Le mode lecteur d'écran reste activé.",
+    "screen_reader_still_disabled": "Le mode lecteur d'écran reste désactivé."
   },
   "in_game": {
     "game_started": "Nouvelle partie commencée !",

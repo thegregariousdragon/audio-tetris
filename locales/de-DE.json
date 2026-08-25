@@ -85,14 +85,14 @@
     "piece_callouts_spoken": "Blockansagen: %{status}",
     "scoring_details_spoken": "Punkte-Details: %{status}",
     "zone_alerts_spoken": "Zonen-Hinweise: %{status}",
-    "screen_reader_mode": "Screen Reader Mode: %{status}",
-    "screen_reader_mode_spoken": "Screen Reader Mode %{status}",
-    "screen_reader_disable_prompt": "Screen reader mode is currently on. Press F12 again within %{seconds} seconds to turn it off.",
-    "screen_reader_enable_prompt": "Screen reader mode is currently off. Press F12 again within %{seconds} seconds to turn it on.",
-    "screen_reader_enabled": "Screen reader mode on.",
-    "screen_reader_disabled": "Screen reader mode off.",
-    "screen_reader_still_enabled": "Screen reader mode remains on.",
-    "screen_reader_still_disabled": "Screen reader mode remains off."
+    "screen_reader_mode": "Screenreader-Modus: %{status}",
+    "screen_reader_mode_spoken": "Screenreader-Modus %{status}",
+    "screen_reader_disable_prompt": "Der Screenreader-Modus ist derzeit aktiviert. Drücken Sie innerhalb von %{seconds} Sekunden erneut F12, um ihn zu deaktivieren.",
+    "screen_reader_enable_prompt": "Der Screenreader-Modus ist derzeit deaktiviert. Drücken Sie innerhalb von %{seconds} Sekunden erneut F12, um ihn zu aktivieren.",
+    "screen_reader_enabled": "Screenreader-Modus aktiviert.",
+    "screen_reader_disabled": "Screenreader-Modus deaktiviert.",
+    "screen_reader_still_enabled": "Screenreader-Modus bleibt aktiviert.",
+    "screen_reader_still_disabled": "Screenreader-Modus bleibt deaktiviert."
   },
   "in_game": {
     "game_started": "Neues Spiel gestartet!",

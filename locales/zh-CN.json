@@ -85,14 +85,14 @@
     "piece_callouts_spoken": "方块提示：%{status}",
     "scoring_details_spoken": "得分详情：%{status}",
     "zone_alerts_spoken": "区域提醒：%{status}",
-    "screen_reader_mode": "Screen Reader Mode: %{status}",
-    "screen_reader_mode_spoken": "Screen Reader Mode %{status}",
-    "screen_reader_disable_prompt": "Screen reader mode is currently on. Press F12 again within %{seconds} seconds to turn it off.",
-    "screen_reader_enable_prompt": "Screen reader mode is currently off. Press F12 again within %{seconds} seconds to turn it on.",
-    "screen_reader_enabled": "Screen reader mode on.",
-    "screen_reader_disabled": "Screen reader mode off.",
-    "screen_reader_still_enabled": "Screen reader mode remains on.",
-    "screen_reader_still_disabled": "Screen reader mode remains off."
+    "screen_reader_mode": "读屏模式：%{status}",
+    "screen_reader_mode_spoken": "读屏模式 %{status}",
+    "screen_reader_disable_prompt": "读屏模式当前已开启。请在 %{seconds} 秒内再次按下 F12 将其关闭。",
+    "screen_reader_enable_prompt": "读屏模式当前已关闭。请在 %{seconds} 秒内再次按下 F12 将其开启。",
+    "screen_reader_enabled": "读屏模式已开启。",
+    "screen_reader_disabled": "读屏模式已关闭。",
+    "screen_reader_still_enabled": "读屏模式保持开启。",
+    "screen_reader_still_disabled": "读屏模式保持关闭。"
   },
   "in_game": {
     "game_started": "新游戏已开始！",

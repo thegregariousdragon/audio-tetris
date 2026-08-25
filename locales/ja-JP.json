@@ -85,14 +85,14 @@
     "piece_callouts_spoken": "ピース読み上げ：%{status}",
     "scoring_details_spoken": "スコア詳細：%{status}",
     "zone_alerts_spoken": "ゾーン通知：%{status}",
-    "screen_reader_mode": "Screen Reader Mode: %{status}",
-    "screen_reader_mode_spoken": "Screen Reader Mode %{status}",
-    "screen_reader_disable_prompt": "Screen reader mode is currently on. Press F12 again within %{seconds} seconds to turn it off.",
-    "screen_reader_enable_prompt": "Screen reader mode is currently off. Press F12 again within %{seconds} seconds to turn it on.",
-    "screen_reader_enabled": "Screen reader mode on.",
-    "screen_reader_disabled": "Screen reader mode off.",
-    "screen_reader_still_enabled": "Screen reader mode remains on.",
-    "screen_reader_still_disabled": "Screen reader mode remains off."
+    "screen_reader_mode": "スクリーンリーダーモード：%{status}",
+    "screen_reader_mode_spoken": "スクリーンリーダーモード %{status}",
+    "screen_reader_disable_prompt": "スクリーンリーダーモードは現在オンです。オフにするには %{seconds} 秒以内にもう一度 F12 を押してください。",
+    "screen_reader_enable_prompt": "スクリーンリーダーモードは現在オフです。オンにするには %{seconds} 秒以内にもう一度 F12 を押してください。",
+    "screen_reader_enabled": "スクリーンリーダーモードをオンにしました。",
+    "screen_reader_disabled": "スクリーンリーダーモードをオフにしました。",
+    "screen_reader_still_enabled": "スクリーンリーダーモードはオンのままです。",
+    "screen_reader_still_disabled": "スクリーンリーダーモードはオフのままです。"
   },
   "in_game": {
     "game_started": "新しいゲームが始まりました！",

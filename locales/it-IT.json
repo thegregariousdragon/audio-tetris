@@ -85,14 +85,14 @@
     "piece_callouts_spoken": "Annuncio pezzi: %{status}",
     "scoring_details_spoken": "Dettagli punteggio: %{status}",
     "zone_alerts_spoken": "Avvisi di zona: %{status}",
-    "screen_reader_mode": "Screen Reader Mode: %{status}",
-    "screen_reader_mode_spoken": "Screen Reader Mode %{status}",
-    "screen_reader_disable_prompt": "Screen reader mode is currently on. Press F12 again within %{seconds} seconds to turn it off.",
-    "screen_reader_enable_prompt": "Screen reader mode is currently off. Press F12 again within %{seconds} seconds to turn it on.",
-    "screen_reader_enabled": "Screen reader mode on.",
-    "screen_reader_disabled": "Screen reader mode off.",
-    "screen_reader_still_enabled": "Screen reader mode remains on.",
-    "screen_reader_still_disabled": "Screen reader mode remains off."
+    "screen_reader_mode": "Modalità lettore di schermo: %{status}",
+    "screen_reader_mode_spoken": "Modalità lettore di schermo %{status}",
+    "screen_reader_disable_prompt": "La modalità lettore di schermo è attualmente attiva. Premi di nuovo F12 entro %{seconds} secondi per disattivarla.",
+    "screen_reader_enable_prompt": "La modalità lettore di schermo è attualmente disattiva. Premi di nuovo F12 entro %{seconds} secondi per attivarla.",
+    "screen_reader_enabled": "Modalità lettore di schermo attivata.",
+    "screen_reader_disabled": "Modalità lettore di schermo disattivata.",
+    "screen_reader_still_enabled": "La modalità lettore di schermo rimane attiva.",
+    "screen_reader_still_disabled": "La modalità lettore di schermo rimane disattiva."
   },
   "in_game": {
     "game_started": "Nuova partita iniziata!",
