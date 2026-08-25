@@ -171,6 +171,10 @@ mod tests {
             ("fr-CA", include_str!("../locales/fr-CA.json")),
             ("it-IT", include_str!("../locales/it-IT.json")),
             ("de-DE", include_str!("../locales/de-DE.json")),
+            ("zh-CN", include_str!("../locales/zh-CN.json")),
+            ("zh-TW", include_str!("../locales/zh-TW.json")),
+            ("ja-JP", include_str!("../locales/ja-JP.json")),
+            ("ko-KR", include_str!("../locales/ko-KR.json")),
         ];
 
         for (locale_code, json_str) in target_locales {
@@ -243,6 +247,22 @@ mod tests {
         rust_i18n::set_locale("de-DE");
         assert_eq!(t!("main_menu.new_game"), "Neues Spiel");
         assert_eq!(t!("settings.title"), "Einstellungen");
+
+        rust_i18n::set_locale("zh-CN");
+        assert_eq!(t!("main_menu.new_game"), "新游戏");
+        assert_eq!(t!("settings.title"), "设置");
+
+        rust_i18n::set_locale("zh-TW");
+        assert_eq!(t!("main_menu.new_game"), "新遊戲");
+        assert_eq!(t!("settings.title"), "設定");
+
+        rust_i18n::set_locale("ja-JP");
+        assert_eq!(t!("main_menu.new_game"), "新しいゲーム");
+        assert_eq!(t!("settings.title"), "設定");
+
+        rust_i18n::set_locale("ko-KR");
+        assert_eq!(t!("main_menu.new_game"), "새 게임");
+        assert_eq!(t!("settings.title"), "설정");
 
         // Reset to en-US
         rust_i18n::set_locale("en-US");
