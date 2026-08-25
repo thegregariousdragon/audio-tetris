@@ -93,4 +93,20 @@ The user uses a screen reader. For accessibility and ease of reading:
 - **Comprehensive Pre-Flight Verification**: Every PR must be verified with automated test suites (`cargo test`), linting (`cargo clippy -- -D warnings`), formatting (`cargo fmt --check`), and syntax/type verification (`cargo check`).
 </RULE[zero_regression_policy]>
 
+<RULE[multilingual_i18n_standard]>
+# Multilingual Localization (i18n & l10n) Protocol
+
+- **Zero Hardcoded User-Facing Strings**: All user-facing text, menu options, dialog messages, instructional lines, and screen reader announcements MUST be retrieved via `rust_i18n::t!` macros. Hardcoding raw string literals for UI labels, speech output, or in-game callouts is strictly prohibited.
+- **100% Key & Variable Placeholder Parity**: Whenever a new string key is added or modified in the master catalog (`locales/en-US.json`), the developer or AI agent MUST synchronously update all other 11 localization catalogs (`en-GB`, `es-ES`, `es-LA`, `fr-FR`, `fr-CA`, `it-IT`, `de-DE`, `zh-CN`, `zh-TW`, `ja-JP`, `ko-KR`). Variable placeholders (`%{var}`) must be preserved identically across all languages.
+- **Language Enum & Catalog File Alignment**: The string returned by `Language::code()` in `src/i18n.rs` MUST match the corresponding catalog filename on disk `locales/<lang-code>.json` exactly (e.g., `Language::EsLa` returns `"es-LA"` to load `locales/es-LA.json`).
+- **New Language Onboarding Protocol**: When adding a new language or dialect:
+    1. Create `locales/<lang-code>.json` with 100% key parity against `en-US.json`.
+    2. Add the language variant to `enum Language` in `src/i18n.rs`.
+    3. Update `Language::ALL`, `Language::code()`, `Language::display_name()`, and `Language::from_code()`.
+    4. Declare the new locale code in `[package.metadata.i18n]` in `Cargo.toml`.
+    5. Ensure `test_all_languages_code_matches_catalog_without_fallback` passes.
+- **Automated Verification Gate**: Every PR modifying user-facing text or localization files MUST pass the bidirectional key parity and placeholder validation test suite via `cargo test i18n::tests`.
+</RULE[multilingual_i18n_standard]>
+
+
 
