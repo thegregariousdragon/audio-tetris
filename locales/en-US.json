@@ -235,10 +235,11 @@
     "line_1": "Created by Gregory Lopez and Google Antigravity.",
     "line_2": "A fully accessible, screen-reader-first arcade puzzle game built in Rust.",
     "line_3": "Engineered with zero graphical reliance, high-precision stereo panning, and pitch-mapped elevation.",
-    "line_4": "Features 5 save slots, high score tracking, Zone Mode, radar sweeps, power-ups, and auto-updater.",
-    "line_5": "Powered by: wxDragon (GUI), Rodio (Audio), Tolk (Screen Readers), and Rusqlite (SQLite Database).",
-    "line_6": "Additional Libraries: Serde (Serialization), Lofty (Audio Metadata), Rand (RNG), and WinRes (Build Manifest).",
-    "line_7": "Copyright 2026 Gregory Lopez and Google Antigravity. Released under the MIT License."
+    "line_4": "Features 12 localized languages, 5 save slots, high score tracking, 9-lesson tutorial, Zone Mode, radar sweeps, power-ups, and auto-updater.",
+    "line_5": "Core Libraries: wxDragon (Allen Dang), Rodio (Pierre Krieger & RustAudio), Tolk (Leonard de Ruijter & Davy Kager), and Rusqlite (John Gallagher & SQLite team).",
+    "line_6": "Localization & Data: rust-i18n (LongAster), sys-locale (1Password), and Serde & Serde JSON (David Tolnay).",
+    "line_7": "Audio & Utilities: Lofty (EpocDotFr), Rand (The Rand Project), Lazy Static (Marvin Löbel), and WinRes (mxre).",
+    "line_8": "Copyright 2026 Gregory Lopez and Google Antigravity. Released under the MIT License."
   },
   "confirm_dialog": {
     "new_game_text": "Abandon active game and start a new game?\n\n-> Press Enter to Confirm\n   Press Escape to Cancel",

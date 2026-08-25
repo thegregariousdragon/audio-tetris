@@ -230,15 +230,16 @@
   },
   "about": {
     "line_counter": "Über Audio Tetris (Zeile %{current} von %{total})\n\n%{line}",
-    "spoken_intro": "Über Audio Tetris. Verwende die Pfeiltasten, um Zeile für Zeile zu lesen. Drücke die Eingabetaste, um alles vorzulesen. Drücke Escape zum Zurückgehen. %{line}",
+    "spoken_intro": "Über Audio Tetris. Verwenden Sie die Pfeiltasten, um Zeile für Zeile zu lesen. Drücken Sie die Eingabetaste, um alles zu lesen. Drücken Sie Escape, um zurückzukehren. %{line}",
     "line_0": "Audio Tetris v%{version}",
     "line_1": "Erstellt von Gregory Lopez und Google Antigravity.",
-    "line_2": "Ein vollständig barrierefreies, primär für Screenreader entwickeltes Arcade-Puzzlespiel in Rust.",
-    "line_3": "Entwickelt ohne jede grafische Abhängigkeit, mit hochpräzisem Stereo-Panorama und tonhöhenbasierter Höhenwahrnehmung.",
-    "line_4": "Bietet 5 Speicherplätze, Highscore-Erfassung, Zonenmodus, Radar-Abtastung, Power-Ups und automatische Updates.",
-    "line_5": "Entwickelt mit: wxDragon (GUI), Rodio (Audio), Tolk (Screenreader) und Rusqlite (SQLite-Datenbank).",
-    "line_6": "Weitere Bibliotheken: Serde (Serialisierung), Lofty (Audio-Metadaten), Rand (Zufallsgenerator) und WinRes (Build-Manifest).",
-    "line_7": "Copyright 2026 Gregory Lopez und Google Antigravity. Veröffentlicht unter der MIT-Lizenz."
+    "line_2": "Ein vollständig barrierefreies, Screenreader-zentriertes Arcade-Puzzlespiel, entwickelt in Rust.",
+    "line_3": "Entwickelt ohne grafische Abhängigkeiten, mit hochpräzisem Stereo-Panning und tonhöhenbasierter Höhenwahrnehmung.",
+    "line_4": "Bietet 12 lokalisierte Sprachen, 5 Speicherplätze, Highscore-Verfolgung, ein Tutorial mit 9 Lektionen, Zonenmodus, Radar-Scans, Power-Up-Gegenstände und automatische Updates.",
+    "line_5": "Hauptbibliotheken: wxDragon (Allen Dang), Rodio (Pierre Krieger & RustAudio), Tolk (Leonard de Ruijter & Davy Kager) und Rusqlite (John Gallagher & SQLite-Team).",
+    "line_6": "Lokalisierung & Daten: rust-i18n (LongAster), sys-locale (1Password) und Serde & Serde JSON (David Tolnay).",
+    "line_7": "Audio & Werkzeuge: Lofty (EpocDotFr), Rand (The Rand Project), Lazy Static (Marvin Löbel) und WinRes (mxre).",
+    "line_8": "Copyright 2026 Gregory Lopez und Google Antigravity. Veröffentlicht unter der MIT-Lizenz."
   },
   "confirm_dialog": {
     "new_game_text": "Aktives Spiel abbrechen und ein neues Spiel starten?\n\n-> Eingabetaste zum Bestätigen drücken\n   Escape-Taste zum Abbrechen drücken",

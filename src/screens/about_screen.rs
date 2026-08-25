@@ -10,6 +10,7 @@ pub fn get_about_lines() -> Vec<String> {
         t!("about.line_5").to_string(),
         t!("about.line_6").to_string(),
         t!("about.line_7").to_string(),
+        t!("about.line_8").to_string(),
     ]
 }
 
@@ -40,12 +41,13 @@ mod tests {
     #[test]
     fn test_get_about_lines_not_empty() {
         let lines = get_about_lines();
-        assert_eq!(lines.len(), 8);
+        assert_eq!(lines.len(), 9);
         assert!(lines[0].starts_with("Audio Tetris v"));
         assert!(lines[1].contains("Gregory Lopez"));
         assert!(lines[5].contains("wxDragon"));
-        assert!(lines[6].contains("Serde"));
-        assert!(lines[7].contains("MIT"));
+        assert!(lines[6].contains("rust-i18n"));
+        assert!(lines[7].contains("Lofty"));
+        assert!(lines[8].contains("MIT"));
     }
 
     #[test]
@@ -65,7 +67,7 @@ mod tests {
     #[test]
     fn test_render_about_bounds() {
         let (text, spoken) = render_about(999, false);
-        assert!(text.contains("8"));
+        assert!(text.contains("9"));
         assert!(spoken.contains("MIT"));
     }
 }

@@ -235,10 +235,11 @@
     "line_1": "由 Gregory Lopez 與 Google Antigravity 傾力打造。",
     "line_2": "一款基於 Rust 語言構建、完全無障礙、專為螢幕朗讀器優先設計的街機益智遊戲。",
     "line_3": "採用零圖形依賴架構，配備高精度立體聲聲相與音調映射高度系統。",
-    "line_4": "支援 5 個存檔欄位、最高分追蹤、領域模式、雷達掃描、強化道具與自動更新。",
-    "line_5": "技術支援：wxDragon（介面）、Rodio（音訊引擎）、Tolk（螢幕朗讀器適配）與 Rusqlite（SQLite 資料庫）。",
-    "line_6": "其他依賴函式庫：Serde（序列化）、Lofty（音訊中繼資料）、Rand（隨機數生成）與 WinRes（構建資訊）。",
-    "line_7": "版權所有 2026 Gregory Lopez 與 Google Antigravity。遵循 MIT 授權條款發布。"
+    "line_4": "支援 12 種本地化語言、5 個存檔欄位、最高分追蹤、9 課互動教學、領域模式、雷達掃描、強化道具與自動更新。",
+    "line_5": "核心函式庫：wxDragon（Allen Dang）、Rodio（Pierre Krieger 與 RustAudio 團隊）、Tolk（Leonard de Ruijter 與 Davy Kager）以及 Rusqlite（John Gallagher 與 SQLite 團隊）。",
+    "line_6": "本地化與資料：rust-i18n（LongAster）、sys-locale（1Password）以及 Serde & Serde JSON（David Tolnay）。",
+    "line_7": "音訊與工具函式庫：Lofty（EpocDotFr）、Rand（The Rand Project）、Lazy Static（Marvin Löbel）以及 WinRes（mxre）。",
+    "line_8": "版權所有 2026 Gregory Lopez 與 Google Antigravity。遵循 MIT 授權條款發布。"
   },
   "confirm_dialog": {
     "new_game_text": "放棄當前進行中的遊戲並開始新遊戲？\n\n-> 按 Enter 鍵確認\n   按 Escape 鍵取消",

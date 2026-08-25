@@ -230,15 +230,16 @@
   },
   "about": {
     "line_counter": "Informazioni su Audio Tetris (Riga %{current} di %{total})\n\n%{line}",
-    "spoken_intro": "Informazioni su Audio Tetris. Usa le frecce per leggere riga per riga. Premi Invio per leggere tutto. Premi Escape per tornare indietro. %{line}",
+    "spoken_intro": "Informazioni su Audio Tetris. Usa i tasti freccia per leggere riga per riga. Premi Invio per leggere tutto. Premi Escape per tornare indietro. %{line}",
     "line_0": "Audio Tetris v%{version}",
     "line_1": "Creato da Gregory Lopez e Google Antigravity.",
-    "line_2": "Un gioco puzzle arcade completamente accessibile e progettato principalmente per lettori di schermo, sviluppato in Rust.",
-    "line_3": "Progettato senza alcuna dipendenza grafica, con bilanciamento stereo ad alta precisione ed elevazione con mappatura dei toni.",
-    "line_4": "Include 5 slot di salvataggio, tracciamento dei record, Modalità Zona, scansioni radar, oggetti speciali e aggiornatore automatico.",
-    "line_5": "Sviluppato con: wxDragon (interfaccia), Rodio (audio), Tolk (lettori di schermo) e Rusqlite (database SQLite).",
-    "line_6": "Librerie aggiuntive: Serde (serializzazione), Lofty (metadati audio), Rand (generazione casuale) e WinRes (manifesto di compilazione).",
-    "line_7": "Copyright 2026 Gregory Lopez e Google Antigravity. Rilasciato sotto Licenza MIT."
+    "line_2": "Un gioco puzzle arcade completamente accessibile e progettato principalmente per screen reader, sviluppato in Rust.",
+    "line_3": "Progettato senza alcuna dipendenza grafica, con bilanciamento stereo ad alta precisione ed elevazione mappata sul pitch.",
+    "line_4": "Include 12 lingue localizzate, 5 slot di salvataggio, record dei punteggi, tutorial in 9 lezioni, Modalità Zona, scansioni radar, potenziamenti e aggiornamento automatico.",
+    "line_5": "Librerie principali: wxDragon (Allen Dang), Rodio (Pierre Krieger & RustAudio), Tolk (Leonard de Ruijter & Davy Kager) e Rusqlite (John Gallagher e il team SQLite).",
+    "line_6": "Localizzazione e dati: rust-i18n (LongAster), sys-locale (1Password) e Serde & Serde JSON (David Tolnay).",
+    "line_7": "Audio e utilità: Lofty (EpocDotFr), Rand (The Rand Project), Lazy Static (Marvin Löbel) e WinRes (mxre).",
+    "line_8": "Copyright 2026 Gregory Lopez e Google Antigravity. Rilasciato sotto Licenza MIT."
   },
   "confirm_dialog": {
     "new_game_text": "Abbandonare la partita in corso e iniziare una nuova partita?\n\n-> Premi Invio per confermare\n   Premi Escape per annullare",
