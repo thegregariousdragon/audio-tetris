@@ -231,6 +231,7 @@ pub fn detect_system_dark_mode() -> bool {
     wxdragon::appearance::is_system_dark_mode()
 }
 
+impl Settings {
     #[allow(dead_code)]
     pub fn is_dark_mode(&self) -> bool {
         match self.theme {
