@@ -19,7 +19,7 @@ sys-locale = "0.3.2"
 
 [package.metadata.i18n]
 default-locale = "en-US"
-locales = ["en-US", "en-GB"]
+locales = ["en-US", "en-GB", "es-ES", "es-LA", "fr-FR", "fr-CA", "it-IT", "de-DE", "zh-CN", "zh-TW", "ja-JP", "ko-KR"]
 
 [build-dependencies]
 winres = "0.1.12"

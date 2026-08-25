@@ -235,10 +235,11 @@
     "line_1": "Gregory Lopez와 Google Antigravity 제작.",
     "line_2": "시각에 의존하지 않고 화면 낭독 프로그램을 위해 설계된 완전 무장애 Rust 아케이드 퍼즐 게임입니다.",
     "line_3": "그래픽 의존성을 완전히 배제하고, 고정밀 입체 음향 팬과 음높이 기반 고도 매핑으로 개발되었습니다.",
-    "line_4": "5개의 저장 슬롯, 최고 점수 기록, 존 모드, 레이더 스캔, 파워업 아이템, 자동 업데이트 기능을 지원합니다.",
-    "line_5": "기술 스택: wxDragon (GUI), Rodio (오디오 엔진), Tolk (화면 낭독 프로그램 연동), Rusqlite (SQLite 데이터베이스).",
-    "line_6": "추가 라이브러리: Serde (직렬화), Lofty (오디오 메타데이터), Rand (난수 생성), WinRes (빌드 매니페스트).",
-    "line_7": "Copyright 2026 Gregory Lopez and Google Antigravity. MIT 라이선스 하에 배포됩니다."
+    "line_4": "12개 언어 현지화, 5개의 저장 슬롯, 최고 점수 기록, 9개 레슨 튜토리얼, 존 모드, 레이더 스캔, 파워업 아이템, 자동 업데이트 기능을 지원합니다.",
+    "line_5": "핵심 라이브러리: wxDragon (Allen Dang), Rodio (Pierre Krieger & RustAudio 팀), Tolk (Leonard de Ruijter & Davy Kager), Rusqlite (John Gallagher & SQLite 팀).",
+    "line_6": "현지화 및 데이터: rust-i18n (LongAster), sys-locale (1Password), Serde & Serde JSON (David Tolnay).",
+    "line_7": "오디오 및 유틸리티: Lofty (EpocDotFr), Rand (The Rand Project), Lazy Static (Marvin Löbel), WinRes (mxre).",
+    "line_8": "Copyright 2026 Gregory Lopez and Google Antigravity. MIT 라이선스 하에 배포됩니다."
   },
   "confirm_dialog": {
     "new_game_text": "진행 중인 게임을 포기하고 새 게임을 시작하시겠습니까?\n\n-> Enter 키를 눌러 확인\n   Escape 키를 눌러 취소",

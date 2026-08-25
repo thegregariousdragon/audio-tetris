@@ -233,12 +233,13 @@
     "spoken_intro": "À propos d'Audio Tetris. Utilisez les flèches pour lire ligne par ligne. Appuyez sur Entrée pour tout lire. Appuyez sur Échap pour revenir. %{line}",
     "line_0": "Audio Tetris v%{version}",
     "line_1": "Créé par Gregory Lopez et Google Antigravity.",
-    "line_2": "Un jeu de puzzle d'arcade entièrement accessible et pensé d'abord pour les lecteurs d'écran, développé en Rust.",
+    "line_2": "Un jeu de casse-tête d'arcade entièrement accessible et pensé d'abord pour les lecteurs d'écran, développé en Rust.",
     "line_3": "Conçu sans aucune dépendance graphique, avec un panoramique stéréo de haute précision et une élévation par tonalités.",
-    "line_4": "Comprend 5 emplacements de sauvegarde, un suivi des meilleurs pointages, le Mode Zone, des balayages radar, des objets spéciaux et un système de mise à jour automatique.",
-    "line_5": "Propulsé par : wxDragon (interface graphique), Rodio (moteur audio), Tolk (lecteurs d'écran) et Rusqlite (base de données SQLite).",
-    "line_6": "Bibliothèques additionnelles : Serde (sérialisation), Lofty (métadonnées audio), Rand (génération aléatoire) et WinRes (manifeste de compilation).",
-    "line_7": "Copyright 2026 Gregory Lopez et Google Antigravity. Publié sous licence MIT."
+    "line_4": "Comprend 12 langues localisées, 5 emplacements de sauvegarde, un suivi des meilleurs pointages, un tutoriel en 9 leçons, le Mode Zone, des balayages radar, des objets spéciaux et un système de mise à jour automatique.",
+    "line_5": "Bibliothèques principales : wxDragon (Allen Dang), Rodio (Pierre Krieger & RustAudio), Tolk (Leonard de Ruijter & Davy Kager) et Rusqlite (John Gallagher et l'équipe SQLite).",
+    "line_6": "Localisation et données : rust-i18n (LongAster), sys-locale (1Password) et Serde & Serde JSON (David Tolnay).",
+    "line_7": "Audio et utilitaires : Lofty (EpocDotFr), Rand (The Rand Project), Lazy Static (Marvin Löbel) et WinRes (mxre).",
+    "line_8": "Copyright 2026 Gregory Lopez et Google Antigravity. Publié sous licence MIT."
   },
   "confirm_dialog": {
     "new_game_text": "Abandonner la partie en cours et démarrer une nouvelle partie ?\n\n-> Appuyez sur Entrée pour confirmer\n   Appuyez sur Échap pour annuler",

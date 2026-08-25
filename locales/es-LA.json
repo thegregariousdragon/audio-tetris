@@ -235,10 +235,11 @@
     "line_1": "Creado por Gregory Lopez y Google Antigravity.",
     "line_2": "Un juego arcade de acertijos totalmente accesible y diseñado en primer lugar para lectores de pantalla, desarrollado en Rust.",
     "line_3": "Diseñado sin ninguna dependencia gráfica, con paneo estéreo de alta precisión y elevación mapeada por tonos.",
-    "line_4": "Incluye 5 ranuras de guardado, registro de puntajes máximos, Modo Zona, barridos de radar, objetos especiales y actualizador automático.",
-    "line_5": "Desarrollado con: wxDragon (interfaz), Rodio (audio), Tolk (lectores de pantalla) y Rusqlite (base de datos SQLite).",
-    "line_6": "Bibliotecas adicionales: Serde (serialización), Lofty (metadatos de audio), Rand (generación aleatoria) y WinRes (manifiesto de compilación).",
-    "line_7": "Copyright 2026 Gregory Lopez y Google Antigravity. Publicado bajo la Licencia MIT."
+    "line_4": "Incluye 12 idiomas localizados, 5 ranuras de guardado, registro de puntajes máximos, tutorial de 9 lecciones, Modo Zona, barridos de radar, objetos especiales y actualizador automático.",
+    "line_5": "Bibliotecas principales: wxDragon (Allen Dang), Rodio (Pierre Krieger y RustAudio), Tolk (Leonard de Ruijter y Davy Kager) y Rusqlite (John Gallagher y el equipo de SQLite).",
+    "line_6": "Localización y datos: rust-i18n (LongAster), sys-locale (1Password) y Serde & Serde JSON (David Tolnay).",
+    "line_7": "Audio y utilidades: Lofty (EpocDotFr), Rand (The Rand Project), Lazy Static (Marvin Löbel) y WinRes (mxre).",
+    "line_8": "Copyright 2026 Gregory Lopez y Google Antigravity. Publicado bajo la Licencia MIT."
   },
   "confirm_dialog": {
     "new_game_text": "¿Abandonar el juego activo e iniciar un nuevo juego?\n\n-> Presiona Enter para confirmar\n   Presiona Escape para cancelar",

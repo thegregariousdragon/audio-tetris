@@ -235,10 +235,11 @@
     "line_1": "Gregory Lopez および Google Antigravity によって制作されました。",
     "line_2": "視覚情報に頼らず、スクリーンリーダーファーストで設計された完全アクセシブルなRust製アーケードパズルゲームです。",
     "line_3": "高精度ステレオ音響と音程マップによる高度認識を備え、グラフィック表示に依存しない設計です。",
-    "line_4": "5つのセーブスロット、ハイスコア記録、ゾーンモード、レーダースキャン、アイテム、自動アップデート機能を搭載しています。",
-    "line_5": "使用技術：wxDragon（GUI）、Rodio（オーディオ）、Tolk（スクリーンリーダー連携）、Rusqlite（SQLiteデータベース）。",
-    "line_6": "追加ライブラリ：Serde（シリアライズ）、Lofty（メタデータ）、Rand（乱数生成）、WinRes（ビルドマニフェスト）。",
-    "line_7": "Copyright 2026 Gregory Lopez and Google Antigravity. MITライセンスの下で公開されています。"
+    "line_4": "12言語のローカライズ対応、5つのセーブスロット、ハイスコア記録、9レッスンのチュートリアル、ゾーンモード、レーダースキャン、アイテム、自動アップデート機能を搭載しています。",
+    "line_5": "主要ライブラリ：wxDragon（Allen Dang）、Rodio（Pierre Krieger および RustAudio チーム）、Tolk（Leonard de Ruijter および Davy Kager）、Rusqlite（John Gallagher および SQLite チーム）。",
+    "line_6": "ローカライズおよびデータ：rust-i18n（LongAster）、sys-locale（1Password）、Serde & Serde JSON（David Tolnay）。",
+    "line_7": "オーディオおよびユーティリティ：Lofty（EpocDotFr）、Rand（The Rand Project）、Lazy Static（Marvin Löbel）、WinRes（mxre）。",
+    "line_8": "Copyright 2026 Gregory Lopez and Google Antigravity. MITライセンスの下で公開されています。"
   },
   "confirm_dialog": {
     "new_game_text": "プレイ中のゲームを中止して新しいゲームを開始しますか？\n\n-> Enterキーで決定\n   Escapeキーでキャンセル",
