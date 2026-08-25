@@ -47,6 +47,9 @@ pub enum AppScreen {
     Settings {
         selection: usize,
     },
+    VisualSettings {
+        selection: usize,
+    },
     SpeechVerbosity {
         selection: usize,
     },
