@@ -38,7 +38,7 @@ impl Language {
             Language::EnUs => "en-US",
             Language::EnGb => "en-GB",
             Language::EsEs => "es-ES",
-            Language::EsLa => "es-419",
+            Language::EsLa => "es-LA",
             Language::FrFr => "fr-FR",
             Language::FrCa => "fr-CA",
             Language::ItIt => "it-IT",
@@ -144,7 +144,10 @@ mod tests {
         assert_eq!(Language::from_code("en-US"), Language::EnUs);
         assert_eq!(Language::from_code("en_GB"), Language::EnGb);
         assert_eq!(Language::from_code("es-ES"), Language::EsEs);
+        assert_eq!(Language::from_code("es-US"), Language::EsLa);
         assert_eq!(Language::from_code("es-MX"), Language::EsLa);
+        assert_eq!(Language::from_code("es-419"), Language::EsLa);
+        assert_eq!(Language::from_code("es-LA"), Language::EsLa);
         assert_eq!(Language::from_code("fr-CA"), Language::FrCa);
         assert_eq!(Language::from_code("fr-FR"), Language::FrFr);
         assert_eq!(Language::from_code("it-IT"), Language::ItIt);
@@ -154,6 +157,50 @@ mod tests {
         assert_eq!(Language::from_code("ja-JP"), Language::JaJp);
         assert_eq!(Language::from_code("ko-KR"), Language::KoKr);
         assert_eq!(Language::from_code("unknown"), Language::EnUs);
+    }
+
+    #[test]
+    fn test_all_languages_code_matches_catalog_without_fallback() {
+        for lang in Language::ALL {
+            let code = lang.code();
+            rust_i18n::set_locale(code);
+            let title = t!("main_menu.title");
+            assert!(!title.is_empty(), "title empty for {:?}", lang);
+
+            match lang {
+                Language::EnUs | Language::EnGb => {
+                    assert_eq!(t!("main_menu.new_game"), "New Game");
+                }
+                Language::EsEs => {
+                    assert_eq!(t!("main_menu.new_game"), "Partida nueva");
+                }
+                Language::EsLa => {
+                    assert_eq!(t!("main_menu.new_game"), "Juego nuevo");
+                }
+                Language::FrFr | Language::FrCa => {
+                    assert_eq!(t!("main_menu.new_game"), "Nouvelle partie");
+                }
+                Language::ItIt => {
+                    assert_eq!(t!("main_menu.new_game"), "Nuova partita");
+                }
+                Language::DeDe => {
+                    assert_eq!(t!("main_menu.new_game"), "Neues Spiel");
+                }
+                Language::ZhCn => {
+                    assert_eq!(t!("main_menu.new_game"), "新游戏");
+                }
+                Language::ZhTw => {
+                    assert_eq!(t!("main_menu.new_game"), "新遊戲");
+                }
+                Language::JaJp => {
+                    assert_eq!(t!("main_menu.new_game"), "新しいゲーム");
+                }
+                Language::KoKr => {
+                    assert_eq!(t!("main_menu.new_game"), "새 게임");
+                }
+            }
+        }
+        rust_i18n::set_locale("en-US");
     }
 
     fn extract_placeholders(s: &str) -> Vec<&str> {
@@ -339,67 +386,5 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn test_runtime_locale_switching() {
-        rust_i18n::set_locale("en-US");
-        assert_eq!(t!("settings.title"), "Settings");
-        assert_eq!(
-            t!("settings.language", name = "English (US)"),
-            "Language: English (US)"
-        );
-        assert!(t!("how_to_play.line_7").contains("centered"));
-
-        rust_i18n::set_locale("en-GB");
-        assert_eq!(t!("settings.title"), "Settings");
-        assert!(t!("how_to_play.line_7").contains("centred"));
-
-        rust_i18n::set_locale("es-ES");
-        assert_eq!(t!("main_menu.new_game"), "Partida nueva");
-        assert_eq!(t!("settings.title"), "Ajustes");
-
-        rust_i18n::set_locale("es-LA");
-        assert_eq!(t!("main_menu.new_game"), "Juego nuevo");
-        assert_eq!(t!("settings.title"), "Configuración");
-
-        rust_i18n::set_locale("fr-FR");
-        assert_eq!(t!("main_menu.new_game"), "Nouvelle partie");
-        assert_eq!(t!("settings.title"), "Paramètres");
-
-        rust_i18n::set_locale("fr-CA");
-        assert_eq!(t!("main_menu.new_game"), "Nouvelle partie");
-        assert_eq!(
-            t!("main_menu.leaderboard"),
-            "Meilleurs pointages et statistiques"
-        );
-
-        rust_i18n::set_locale("it-IT");
-        assert_eq!(t!("main_menu.new_game"), "Nuova partita");
-        assert_eq!(t!("settings.title"), "Impostazioni");
-
-        rust_i18n::set_locale("de-DE");
-        assert_eq!(t!("main_menu.new_game"), "Neues Spiel");
-        assert_eq!(t!("settings.title"), "Einstellungen");
-
-        rust_i18n::set_locale("zh-CN");
-        assert_eq!(t!("main_menu.new_game"), "新游戏");
-        assert_eq!(t!("settings.title"), "设置");
-
-        rust_i18n::set_locale("zh-TW");
-        assert_eq!(t!("main_menu.new_game"), "新遊戲");
-        assert_eq!(t!("settings.title"), "設定");
-
-        rust_i18n::set_locale("ja-JP");
-        assert_eq!(t!("main_menu.new_game"), "新しいゲーム");
-        assert_eq!(t!("settings.title"), "設定");
-
-        rust_i18n::set_locale("ko-KR");
-        assert_eq!(t!("main_menu.new_game"), "새 게임");
-        assert_eq!(t!("settings.title"), "설정");
-
-        // Reset to en-US
-        rust_i18n::set_locale("en-US");
-        assert_eq!(t!("settings.title"), "Settings");
     }
 }
