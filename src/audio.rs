@@ -102,12 +102,35 @@ impl AudioEngine {
         }
         tracks.sort_by(|a, b| a.0.cmp(&b.0));
         let bgm_tracks = Arc::new(tracks);
-        let menu_path = PathBuf::from("assets/menu/Glith_in_the_Galactics.wav");
-        let menu_track = Arc::new(if menu_path.is_file() {
-            Some((menu_path, "Glith in the Galactics".to_string()))
-        } else {
-            None
-        });
+        let mut menu_track_candidate = None;
+        if let Ok(entries) = std::fs::read_dir("assets/menu") {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file()
+                    && let Some(ext) = path.extension().and_then(|s| s.to_str())
+                {
+                    let ext = ext.to_lowercase();
+                    if ext == "wav" || ext == "mp3" || ext == "ogg" || ext == "flac" {
+                        let mut title = path
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("Glith in the Galactics")
+                            .replace('_', " ");
+                        if let Ok(tagged_file) = Probe::open(&path).and_then(|p| p.read())
+                            && let Some(tag) = tagged_file
+                                .primary_tag()
+                                .or_else(|| tagged_file.first_tag())
+                            && let Some(t) = tag.title()
+                        {
+                            title = t.into_owned();
+                        }
+                        menu_track_candidate = Some((path, title));
+                        break;
+                    }
+                }
+            }
+        }
+        let menu_track = Arc::new(menu_track_candidate);
         let current_track = Arc::new(Mutex::new(0));
         let bgm_enabled = Arc::new(Mutex::new(settings.bgm_enabled));
         let bgm_mode = Arc::new(Mutex::new(BgmMode::Menu));

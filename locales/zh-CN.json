@@ -10,7 +10,8 @@
     "confirm": "按回车键确认",
     "cancel": "按 Escape 键取消",
     "item_counter": "%{item} 第 %{current} 项，共 %{total} 项",
-    "day_utc_timestamp": "第 %{days} 天 %{hours}:%{mins} UTC"
+    "day_utc_timestamp": "第 %{days} 天 %{hours}:%{mins} UTC",
+    "none": "无"
   },
   "main_menu": {
     "title": "主菜单",
@@ -133,7 +134,13 @@
     "used_item": "使用了 %{item}",
     "no_item_to_use": "没有可用的道具",
     "bgm_playing": "正在播放 %{track}",
-    "bgm_status": "背景音乐 %{status}"
+    "bgm_status": "背景音乐 %{status}",
+    "zone_active_ms": "区域激活: %{ms} 毫秒",
+    "zone_inactive": "区域未激活",
+    "ascii_stats": "等级 %{level}   得分 %{score}   消行 %{lines}   能量 %{zone}%",
+    "ascii_slots": "暂存: %{hold}   当前: %{current}   道具: %{item}",
+    "board_legend": "图例: [] 当前方块 | ## 固定方块 | .. 幽灵方块 | $$ 道具 |    空白",
+    "pause_hint": "按 Escape 暂停游戏。"
   },
   "pieces": {
     "technical_i": "长条",
@@ -154,7 +161,10 @@
   "items": {
     "magnet": "磁铁",
     "nuke": "核弹",
-    "laser": "激光"
+    "laser": "激光",
+    "magnet_short": "磁铁",
+    "nuke_short": "核弹",
+    "laser_short": "激光"
   },
   "key_describer": {
     "help_title": "键盘帮助模式\n按任意键收听其功能。\n按两次 Escape 退出。",
@@ -315,5 +325,18 @@
     "spoken_update_available_status": "发现新版本：版本 %{version}",
     "spoken_downloading": "正在下载更新...",
     "spoken_update_failed": "更新失败：%{err}"
+  },
+  "visuals": {
+    "paused": "暂停",
+    "status_header": "状态",
+    "piece_header": "方块",
+    "level": "等级 %{level}",
+    "score": "得分 %{score}",
+    "lines": "消行 %{lines}",
+    "zone": "能量 %{zone}%",
+    "current": "当前 %{piece}",
+    "hold": "暂存 %{piece}",
+    "item": "道具 %{item}",
+    "screen_reader_hint": "F12 读屏模式"
   }
 }

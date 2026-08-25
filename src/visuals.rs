@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use wxdragon::prelude::*;
 
 use crate::logic::{BOARD_HEIGHT, BOARD_WIDTH, GameState, ItemType, TetrominoType};
@@ -468,7 +469,14 @@ fn draw_pause_menu(
     ) {
         dc.set_font(&title_font);
     }
-    draw_shadowed_centered_text(dc, "PAUSED", width, height / 4, palette.title, palette);
+    draw_shadowed_centered_text(
+        dc,
+        &t!("visuals.paused"),
+        width,
+        height / 4,
+        palette.title,
+        palette,
+    );
 
     if let Some(menu_font) = Font::new_with_details(
         19,
@@ -646,12 +654,16 @@ fn draw_hud_panel(
 ) {
     draw_panel_backing(dc, x, y, width, height, palette);
     dc.set_text_foreground(palette.title);
-    dc.draw_text("STATUS", x + 16, y + 12);
+    dc.draw_text(&t!("visuals.status_header"), x + 16, y + 12);
     dc.set_text_foreground(palette.text);
-    dc.draw_text(&format!("Level {}", gs.level), x + 16, y + 46);
-    dc.draw_text(&format!("Score {}", gs.score), x + 16, y + 74);
-    dc.draw_text(&format!("Lines {}", gs.total_lines), x + 16, y + 102);
-    dc.draw_text(&format!("Zone {}%", gs.zone_meter), x + 16, y + 130);
+    dc.draw_text(&t!("visuals.level", level = gs.level), x + 16, y + 46);
+    dc.draw_text(&t!("visuals.score", score = gs.score), x + 16, y + 74);
+    dc.draw_text(
+        &t!("visuals.lines", lines = gs.total_lines),
+        x + 16,
+        y + 102,
+    );
+    dc.draw_text(&t!("visuals.zone", zone = gs.zone_meter), x + 16, y + 130);
 }
 
 fn draw_info_panel(
@@ -665,24 +677,27 @@ fn draw_info_panel(
 ) {
     draw_panel_backing(dc, x, y, width, height, palette);
     dc.set_text_foreground(palette.selected);
-    dc.draw_text("PIECE", x + 16, y + 12);
+    dc.draw_text(&t!("visuals.piece_header"), x + 16, y + 12);
     dc.set_text_foreground(palette.text);
     dc.draw_text(
-        &format!("Current {}", piece_name(Some(gs.current_piece.t_type))),
+        &t!(
+            "visuals.current",
+            piece = piece_name(Some(gs.current_piece.t_type))
+        ),
         x + 16,
         y + 46,
     );
     dc.draw_text(
-        &format!("Hold {}", piece_name(gs.hold_piece)),
+        &t!("visuals.hold", piece = piece_name(gs.hold_piece)),
         x + 16,
         y + 74,
     );
     dc.draw_text(
-        &format!("Item {}", item_name(gs.inventory)),
+        &t!("visuals.item", item = item_name(gs.inventory)),
         x + 16,
         y + 102,
     );
-    dc.draw_text("F12 screen reader", x + 16, y + 130);
+    dc.draw_text(&t!("visuals.screen_reader_hint"), x + 16, y + 130);
 }
 
 fn draw_panel_backing(
@@ -1005,25 +1020,25 @@ fn piece_colour(piece: TetrominoType) -> Colour {
     }
 }
 
-fn piece_name(piece: Option<TetrominoType>) -> &'static str {
+fn piece_name(piece: Option<TetrominoType>) -> String {
     match piece {
-        Some(TetrominoType::I) => "I",
-        Some(TetrominoType::J) => "J",
-        Some(TetrominoType::L) => "L",
-        Some(TetrominoType::O) => "O",
-        Some(TetrominoType::S) => "S",
-        Some(TetrominoType::T) => "T",
-        Some(TetrominoType::Z) => "Z",
-        None => "None",
+        Some(TetrominoType::I) => "I".to_string(),
+        Some(TetrominoType::J) => "J".to_string(),
+        Some(TetrominoType::L) => "L".to_string(),
+        Some(TetrominoType::O) => "O".to_string(),
+        Some(TetrominoType::S) => "S".to_string(),
+        Some(TetrominoType::T) => "T".to_string(),
+        Some(TetrominoType::Z) => "Z".to_string(),
+        None => t!("common.none").to_string(),
     }
 }
 
-fn item_name(item: Option<ItemType>) -> &'static str {
+fn item_name(item: Option<ItemType>) -> String {
     match item {
-        Some(ItemType::Magnet) => "Magnet",
-        Some(ItemType::Nuke) => "Nuke",
-        Some(ItemType::Laser) => "Laser",
-        None => "None",
+        Some(ItemType::Magnet) => t!("items.magnet_short").to_string(),
+        Some(ItemType::Nuke) => t!("items.nuke_short").to_string(),
+        Some(ItemType::Laser) => t!("items.laser_short").to_string(),
+        None => t!("common.none").to_string(),
     }
 }
 

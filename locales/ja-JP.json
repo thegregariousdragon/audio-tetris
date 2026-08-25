@@ -10,7 +10,8 @@
     "confirm": "Enterキーで決定",
     "cancel": "Escapeキーでキャンセル",
     "item_counter": "%{item} %{current} / %{total}",
-    "day_utc_timestamp": "%{days}日 %{hours}:%{mins} UTC"
+    "day_utc_timestamp": "%{days}日 %{hours}:%{mins} UTC",
+    "none": "なし"
   },
   "main_menu": {
     "title": "メインメニュー",
@@ -133,7 +134,13 @@
     "used_item": "%{item} を使用しました",
     "no_item_to_use": "使用可能なアイテムがありません",
     "bgm_playing": "%{track} を再生中",
-    "bgm_status": "BGM %{status}"
+    "bgm_status": "BGM %{status}",
+    "zone_active_ms": "ゾーン作動中: %{ms} ms",
+    "zone_inactive": "ゾーン停止中",
+    "ascii_stats": "レベル %{level}   スコア %{score}   ライン %{lines}   ゾーン %{zone}%",
+    "ascii_slots": "ホールド: %{hold}   カレント: %{current}   アイテム: %{item}",
+    "board_legend": "凡例: [] 操作中 | ## 固定 | .. ゴースト | $$ アイテム |    空",
+    "pause_hint": "Escapeキーを押して一時停止します。"
   },
   "pieces": {
     "technical_i": "棒",
@@ -154,7 +161,10 @@
   "items": {
     "magnet": "マグネット",
     "nuke": "ニューク",
-    "laser": "レーザー"
+    "laser": "レーザー",
+    "magnet_short": "マグネット",
+    "nuke_short": "ニューク",
+    "laser_short": "レーザー"
   },
   "key_describer": {
     "help_title": "キーボードヘルプモード\n任意のキーを押すとその機能が読み上げられます。\nEscapeキーを2回押すと終了します。",
@@ -315,5 +325,18 @@
     "spoken_update_available_status": "アップデート利用可能：バージョン %{version}",
     "spoken_downloading": "アップデートをダウンロード中...",
     "spoken_update_failed": "アップデート失敗：%{err}"
+  },
+  "visuals": {
+    "paused": "一時停止",
+    "status_header": "ステータス",
+    "piece_header": "ピース",
+    "level": "レベル %{level}",
+    "score": "スコア %{score}",
+    "lines": "ライン %{lines}",
+    "zone": "ゾーン %{zone}%",
+    "current": "カレント %{piece}",
+    "hold": "ホールド %{piece}",
+    "item": "アイテム %{item}",
+    "screen_reader_hint": "F12 スクリーンリーダー"
   }
 }

@@ -10,7 +10,8 @@
     "confirm": "Premi Invio per confermare",
     "cancel": "Premi Escape per annullare",
     "item_counter": "%{item} %{current} di %{total}",
-    "day_utc_timestamp": "Giorno %{days} %{hours}:%{mins} UTC"
+    "day_utc_timestamp": "Giorno %{days} %{hours}:%{mins} UTC",
+    "none": "Nessuno"
   },
   "main_menu": {
     "title": "Menu principale",
@@ -133,7 +134,13 @@
     "used_item": "Usato %{item}",
     "no_item_to_use": "Nessun oggetto da usare",
     "bgm_playing": "Riproduzione di %{track}",
-    "bgm_status": "Musica di sottofondo %{status}"
+    "bgm_status": "Musica di sottofondo %{status}",
+    "zone_active_ms": "Zona attiva: %{ms} ms",
+    "zone_inactive": "Zona inattiva",
+    "ascii_stats": "Livello %{level}   Punti %{score}   Linee %{lines}   Zona %{zone}%",
+    "ascii_slots": "Riserva: %{hold}   Corrente: %{current}   Oggetto: %{item}",
+    "board_legend": "Legenda: [] attiva | ## bloccata | .. ombra | $$ oggetto |    vuoto",
+    "pause_hint": "Premi Escape per mettere in pausa il gioco."
   },
   "pieces": {
     "technical_i": "Barra",
@@ -154,7 +161,10 @@
   "items": {
     "magnet": "Il Magnete",
     "nuke": "La Bomba Nucleare",
-    "laser": "Il Laser"
+    "laser": "Il Laser",
+    "magnet_short": "Magnete",
+    "nuke_short": "Bomba Nucleare",
+    "laser_short": "Laser"
   },
   "key_describer": {
     "help_title": "Modalità guida tastiera\nPremi qualsiasi tasto per ascoltarne la funzione.\nPremi Escape due volte per uscire.",
@@ -315,5 +325,18 @@
     "spoken_update_available_status": "Aggiornamento disponibile: Versione %{version}",
     "spoken_downloading": "Download dell'aggiornamento in corso...",
     "spoken_update_failed": "Aggiornamento non riuscito: %{err}"
+  },
+  "visuals": {
+    "paused": "IN PAUSA",
+    "status_header": "STATO",
+    "piece_header": "PEZZO",
+    "level": "Livello %{level}",
+    "score": "Punti %{score}",
+    "lines": "Linee %{lines}",
+    "zone": "Zona %{zone}%",
+    "current": "Corrente %{piece}",
+    "hold": "Riserva %{piece}",
+    "item": "Oggetto %{item}",
+    "screen_reader_hint": "F12 lettore di schermo"
   }
 }
