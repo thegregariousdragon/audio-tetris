@@ -1,14 +1,14 @@
 <RULE[project_branching_model]>
 # Branching Model and Protected Main Branch
 
-The `main` branch of this repository is protected and strictly requires pull request reviews and passing CI status checks (`Build, Test & Lint`). You CANNOT push directly to `main`.
+The `main` branch of this repository is protected and strictly requires passing CI status checks (`Build, Test & Lint`) and authorized code review. You CANNOT push directly to `main`.
 
-When you are asked to make changes to the codebase, you MUST follow this Git workflow:
+When you (as the repository owner/assistant) are asked to make changes to the codebase, you MUST follow this Git workflow:
 1. **Create a Branch**: Create and checkout a new branch with a descriptive name (e.g., `git checkout -b feature/dynamic-music`).
 2. **Commit Changes**: Make your changes and commit them to this branch.
 3. **Push Branch**: Push the branch to the remote repository (e.g., `git push -u origin feature/dynamic-music`).
 4. **Create Pull Request**: Use the GitHub CLI to create a Pull Request against the `main` branch (`gh pr create --fill`).
-5. **Auto-Approve and Merge**: Once the Pull Request is created, use the GitHub CLI to enable auto-merge (`gh pr merge --squash --auto --delete-branch`). This respects branch protection and rulesets while allowing GitHub to merge the PR automatically as soon as CI status checks pass.
+5. **Auto-Approve and Merge**: Once the Pull Request is created, use the GitHub CLI to enable auto-merge (`gh pr merge --squash --auto --delete-branch`). As repository owner/admin, this respects branch protection and rulesets while allowing GitHub to merge the PR automatically as soon as CI status checks pass.
 </RULE[project_branching_model]>
 
 <RULE[github_ci_cd_and_releases]>
@@ -108,5 +108,20 @@ The user uses a screen reader. For accessibility and ease of reading:
 - **Automated Verification Gate**: Every PR modifying user-facing text or localization files MUST pass the bidirectional key parity and placeholder validation test suite via `cargo test i18n::tests`.
 </RULE[multilingual_i18n_standard]>
 
+<RULE[collaborator_pr_review_and_security_protocol]>
+# Collaborator PR Review & Security Protocol
 
-
+- **Mandatory Owner Approval for Collaborator PRs**: All pull requests submitted by collaborators (anyone other than the repository owner `@thegregariousdragon`) strictly require explicit code review and approval from `@thegregariousdragon` via `.github/CODEOWNERS` and repository ruleset enforcement before merging into `main`.
+- **Review & Security Audit Procedure**: When the user requests a review of an incoming collaborator PR, the AI agent MUST perform the following checks:
+    1. **Diff & Intent Inspection**: Inspect PR metadata, commit history, and the full unified diff (`gh pr view <number>` and `gh pr diff <number>`). Explain clearly what the contributor is changing and why.
+    2. **Malicious Code & Security Scanning**: Verify that the PR contains no malicious code, obfuscated payloads, unauthorized network calls, suspicious external crates/dependencies, arbitrary shell execution, or unauthorized filesystem/registry modifications.
+    3. **Architecture & Safety Compliance**: Ensure strict compliance with all project rules (wxDragon GUI thread safety, audio thread isolation, panic-free error handling, and Rust 2024 edition standards).
+    4. **Localization Parity Audit**: Ensure all newly introduced strings are localized across all 12 language catalogs with exact variable placeholder matching.
+    5. **Empirical Local Testing**: Fetch the PR branch locally and run all pre-flight checks:
+        - `cargo fmt --check`
+        - `cargo check --all-targets --all-features`
+        - `cargo test --all-targets --all-features`
+        - `cargo clippy --all-targets --all-features -- -D warnings`
+    6. **Accessible Audit Report**: Present a comprehensive, screen-reader friendly summary report directly in chat detailing findings, risks, test results, and a merge recommendation.
+    7. **Explicit Owner Confirmation**: Never approve or merge a collaborator PR without explicit confirmation from the user.
+</RULE[collaborator_pr_review_and_security_protocol]>
