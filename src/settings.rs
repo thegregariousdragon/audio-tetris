@@ -171,7 +171,75 @@ impl Default for Settings {
     }
 }
 
-impl Settings {
+#[cfg(target_os = "windows")]
+fn detect_windows_dark_mode() -> Option<bool> {
+    type Hkey = *mut std::ffi::c_void;
+    type Lstatus = i32;
+
+    const HKEY_CURRENT_USER: Hkey = 0x80000001u32 as usize as Hkey;
+    const RRF_RT_REG_DWORD: u32 = 0x00000010;
+
+    #[link(name = "advapi32")]
+    unsafe extern "system" {
+        fn RegGetValueW(
+            hkey: Hkey,
+            lpSubKey: *const u16,
+            lpValue: *const u16,
+            dwFlags: u32,
+            pdwType: *mut u32,
+            pvData: *mut std::ffi::c_void,
+            pcbData: *mut u32,
+        ) -> Lstatus;
+    }
+
+    let sub_key: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\0"
+        .encode_utf16()
+        .collect();
+    let value_name: Vec<u16> = "AppsUseLightTheme\0".encode_utf16().collect();
+
+    let mut data: u32 = 0;
+    let mut data_size = std::mem::size_of::<u32>() as u32;
+
+    let status = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            sub_key.as_ptr(),
+            value_name.as_ptr(),
+            RRF_RT_REG_DWORD,
+            std::ptr::null_mut(),
+            &mut data as *mut u32 as *mut std::ffi::c_void,
+            &mut data_size,
+        )
+    };
+
+    if status == 0 {
+        // AppsUseLightTheme == 0 means Dark Mode is active; 1 means Light Mode
+        Some(data == 0)
+    } else {
+        None
+    }
+}
+
+pub fn detect_system_dark_mode() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(is_dark) = detect_windows_dark_mode() {
+            return is_dark;
+        }
+    }
+
+    wxdragon::appearance::is_system_dark_mode()
+}
+
+    #[allow(dead_code)]
+    pub fn is_dark_mode(&self) -> bool {
+        match self.theme {
+            ThemePreference::Dark => true,
+            ThemePreference::Light => false,
+            ThemePreference::System => detect_system_dark_mode(),
+        }
+    }
+
     pub fn get_theme_colors(&self) -> ((u8, u8, u8), (u8, u8, u8)) {
         ((18, 18, 24), (245, 245, 245))
     }
@@ -235,5 +303,15 @@ mod tests {
         let (bg_l, fg_l) = s.get_theme_colors();
         assert_eq!(bg_l, (18, 18, 24));
         assert_eq!(fg_l, (245, 245, 245));
+    }
+
+    #[test]
+    fn test_system_dark_mode_detection() {
+        let is_dark = detect_system_dark_mode();
+        let s = Settings {
+            theme: ThemePreference::System,
+            ..Default::default()
+        };
+        assert_eq!(s.is_dark_mode(), is_dark);
     }
 }
